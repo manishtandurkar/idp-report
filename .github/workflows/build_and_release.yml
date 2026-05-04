@@ -15,12 +15,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Install minimal TeX Live and tools
+    - name: Install TeX Live and tools
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          texlive-latex-extra texlive-fonts-recommended \
-          latexmk biber
+          texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra \
+          texlive-bibtex-extra texlive-publishers texlive-science latexmk biber
 
     - name: Cache apt packages (speeds repeated runs)
       uses: actions/cache@v4
