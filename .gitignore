@@ -1,0 +1,31 @@
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# LaTeX build outputs
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.glo
+*.glg
+*.gls
+*.glsdefs
+*.ist
+*.listing
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.sym1
+*.sym2
+*.toc
+*.xdv
+
+# Generated bibliography and PDFs
+*-blx.bib
+*.pdf
