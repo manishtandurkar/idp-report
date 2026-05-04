@@ -19,8 +19,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          texlive-latex-recommended latexmk biber
-          
+          texlive-latex-extra texlive-fonts-recommended \
+          latexmk biber
+
     - name: Cache apt packages (speeds repeated runs)
       uses: actions/cache@v4
       with:
