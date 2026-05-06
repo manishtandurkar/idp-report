@@ -45,8 +45,8 @@ Tone: academic, argumentative, evidence-based.
 ## 1. Project Overview
 
 ### Title (use as-is or adapt)
-**"AI-Assisted Digitisation, Enhancement, and Transcription of South Asian
-Historical Inscriptions and Manuscripts"**
+**"Digitisation of Historical
+Inscriptions and Manuscripts"**
 
 ### One-line summary
 An end-to-end software pipeline that takes degraded scanned images of stone

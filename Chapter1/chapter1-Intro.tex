@@ -1,59 +1,47 @@
-\chapter{Introduction to Analog and Digital converters}
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter). But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph.
+\chapter{Introduction to Digitisation of Historical Inscriptions and Manuscripts}
+This chapter frames the digitisation challenge for South Asian historical inscriptions and manuscripts and situates the project within heritage preservation and modern AI-assisted workflows. It introduces the project title and context, then moves into the motivation, problem statement, and objectives that drive the work. A brief methodology overview outlines the staged pipeline from preprocessing and enhancement to OCR and record assembly. The section on assumptions and constraints clarifies the operational boundaries, and the chapter closes by summarizing how the rest of the report is organized.
 
 \section[Introduction]{\textbf{Introduction}}
-The title of the project can be introduced in this section. This section should neatly elaborate the context of the project, the relevance of the area chosen and the title. You can bring a brief history and arrive at the title of the project. Use appropriate number of paragraphs within this section. 
+South Asia preserves a vast body of historical knowledge in stone inscriptions, palm leaf manuscripts, copper plates, paper manuscripts, and cave or rock paintings. Many of these artefacts are fragile, geographically dispersed, and visually degraded, which makes manual transcription slow and dependent on scarce specialist expertise. While major archives provide scanned images, they rarely include a reliable transcription layer that allows the material to be searched, compared, or cited in a structured form.
 
-You are allowed to use figures or diagrams which can help in introducing the topic acknowledging the source. For example , if you are introducing a particular topic, an appropriate figure can be used. The figure should be referenced in the text as Figure. \ref{fig:universe} 
-\begin{figure}[htb]
-\centering
-	\includegraphics[scale=1]{Figures/universe}	
-	\caption{Sample picture of universe }
-	\label{fig:universe}
-\end{figure}
+This project, titled \textit{Digitisation of Historical Inscriptions and Manuscripts}, addresses that gap through a unified, multi-artefact pipeline. The workflow takes degraded scans and produces an enhanced image, a Unicode transcription of the original script, and a structured metadata record that can be exported as JSON or a researcher-ready PDF. Unlike single-script or single-medium systems, the design routes each artefact type through tailored enhancement and binarisation steps to preserve text legibility and material context.
 
-These guidelines are provided to formally expose you to the various ethical and technical issues involved in writing up your work and the format you are required to adhere to while submitting your project report.
+The work presented in this report focuses on Phase 1 of the pipeline: preprocessing, AI enhancement, binarisation, and OCR-based transcription. Translation into modern English is planned as a later phase, after reliable transcription quality is established. This section sets the technical and historical context for the project and anchors the motivation, problem statement, and objectives that follow.
 
 \section[Literature Review]{\textbf{Literature Review}}
+This review focuses on recent work in historical document enhancement, binarisation, OCR, layout analysis, and translation, with an emphasis on studies most relevant to South Asian inscriptions and manuscripts.
 
-A literature review is a text of a scholarly paper, which includes the current knowledge including substantive findings, as well as theoretical and methodological contributions to a particular topic. Literature reviews are secondary sources, and do not report new or original experimental work. Most often associated with academic-oriented literature, such reviews are found in academic journals, and are not to be confused with book reviews that may also appear in the same publication. Literature reviews are a basis for research in nearly every academic field . A narrow-scope literature review may be included as part of a peer-reviewed journal article presenting new research, serving to situate the current study within the body of the relevant literature and to provide context for the reader. In such a case, the review usually precedes the methodology and results sections of the work.
+Aitha et al. present a Brahmi character dataset and a custom CNN for Ashokan Brahmi, which is a critical step toward OCR for ancient scripts but remains an early-stage dataset effort without integration into a full processing pipeline \cite{Aitha2023}.
 
-\subsection{Sample}
-The main types of literature reviews are: evaluative, exploratory, and instrumental. A fourth type, the systematic review, is often classified separately, but is essentially a literature review focused on a research question, trying to identify, appraise, select and synthesize all high-quality research evidence and arguments relevant to that question. A meta-analysis is typically a systematic review using statistical methods to effectively combine the data used on all selected studies to produce a more reliable result.
-\subsubsection[Review types]{\textbf{Review types}}
+Mehrotra et al. introduce Indiscapes for layout analysis of Indic manuscripts using CNN-based segmentation, yet the scope is limited to page layout and does not address enhancement, binarisation, or transcription quality \cite{Mehrotra2022}.
 
-The main types of literature reviews are: evaluative, exploratory, and instrumental. A fourth type, the systematic review, is often classified separately, but is essentially a literature review focused on a research question, trying to identify, appraise, select and synthesize all high-quality research evidence and arguments relevant to that question. A meta-analysis is typically a systematic review using statistical methods to effectively combine the data used on all selected studies to produce a more reliable result.
+AI4Bharat's Bhashini initiative provides transformer-based NLP resources for Indian languages, but its focus is modern language usage and it provides limited support for classical or epigraphic forms \cite{AI4Bharat2022}.
 
+Wang et al. propose Real-ESRGAN for blind super-resolution on real degraded photos, demonstrating strong perceptual restoration, but the evaluation is not conducted on inscription imagery or document-specific degradations \cite{Wang2021}.
 
-\subsubsection[Process and product]{\textbf{Process and product}}
+Pramanik et al. apply U-Net based denoising to degraded handwritten documents, achieving clear noise suppression, yet the experiments are centered on European scripts rather than Indic historical sources \cite{Pramanik2021}.
 
-Distinguish between the process of reviewing the literature and a finished work or product known as a literature review. The process of reviewing the literature is often ongoing and informs many aspects of the empirical research project. All of the latest literature should inform a research project. Scholars need to be scanning the literature long after a formal literature review product appears to be completed.
+Valy et al. build a deep learning pipeline for Khmer palm leaf manuscripts using CNN and LSTM for OCR, but the approach is language-specific and is not validated on South Asian scripts or inscription media \cite{Valy2021}.
 
-\subsubsection{\textbf{Page limitation}}
+Seuret et al. propose the DIVA-HisDB framework for historical document analysis with layout and transcription components, though the focus is European medieval manuscripts without Indic script coverage \cite{Seuret2021}.
 
-A careful literature review is usually 15 to 30 pages and could be longer. The process of reviewing the literature requires different kinds of activities and ways of thinking and link the activities of doing a literature review with Benjamin Bloom’s revised taxonomy of the cognitive domain (ways of thinking: remembering, understanding, applying, analysing, evaluating, and creating).
+Dhanya et al. release the THPLMD dataset and apply Sauvola adaptive thresholding for Tamil palm leaf binarisation, which improves foreground extraction but stops short of transcription or translation stages \cite{Dhanya2020}.
 
-This section should contain the review of the literature in the past.You should review a minimum of 10 papers from standard reference journals. Kindly avoid local conference papers and papers from predatory journals. Kindly consult with your guide and finalize papers to be considered for review before adding in this section.Report the major observations and findings from each paper in one paragraph in the format given below.
+Helsinki-NLP's OPUS-MT models enable transformer-based translation for Dravidian and Indic languages, yet performance degrades on archaic or classical text varieties common in inscriptions \cite{HelsinkiNLP2020}.
 
-proposed various techniques for adders and multipliers.Add the reference papers to the bibliography section using Jabref and cite it here using the instructions given in further chapters.
+Krishnan et al. use deep CNNs for OCR of Tamil and Devanagari, providing script-specific recognition but not incorporating ensemble strategies or confidence-driven fusion \cite{Krishnan2019}.
 
+Burie et al. report the ICFHR 2016 competition on palm leaf manuscripts, benchmarking binarisation methods and highlighting the difficulty of noise and texture, but without any AI enhancement or end-to-end transcription \cite{Burie2016}.
 
-\subsubsection{\textbf{Plagiarism}}
+Harman introduces DStretch for rock art enhancement through color decorrelation, a highly effective visual method that is not paired with OCR or structured text extraction \cite{Harman2008}.
 
-To use someone else's exact words without quotation marks and appropriate credit, or to use the unique ideas of someone else without acknowledgement, is known as plagiarism. In publishing, plagiarism is illegal; in other circumstances, it is, at the least, unethical. You may quote or paraphrase the words or ideas of another if you document your source. Although you need not enclose the paraphrased material in quotation marks, you must document the source. 
-
-Paraphrased ideas are taken from someone else whether or not the words are identical. Paraphrasing a passage without citing the source is permissible only when the information paraphrased is common knowledge in a field. (Common knowledge refers to historical, scientific, geographical, technical, and other type of information on a topic readily available in handbooks, manuals, atlases and other references). 
-
-\subsubsection{How to add Reference}
-Use \texttt{Jabref} which will help in adding the reference in a separate file, from which one can use \verb|\citep\{\}| command to add reference. A sample, referring to a textbook would look something like this,\cite{Razavi2000}.
+Collectively, these studies show strong individual advances in enhancement, binarisation, OCR, layout analysis, and translation, but also reveal a gap in integrated, multi-artefact pipelines tuned to South Asian epigraphy and manuscript collections.
 
 \section[Motivation]{\textbf{Motivation}}
-
-Brief the motivation of selecting your project title. You can elaborate the challenges in the specific area, relevance and importance of the chosen topic. 
+Preserving inscriptions and manuscripts is essential for historical scholarship, yet the materials are often degraded, fragile, and dispersed across archives, limiting access and slowing research. Manual transcription is time-consuming and depends on scarce expertise in ancient scripts, while existing digital collections typically provide only scanned images without searchable text. Recent advances in image enhancement and OCR make it feasible to recover faint characters and create reliable digital records. This project is motivated by the need for an end-to-end, repeatable pipeline that improves legibility, extracts Unicode text, and produces citable records to accelerate research and preservation.
 
 \section[Problem statement]{\textbf{Problem statement}}
-
-Define the problem statement in this section, in one paragraph.
+Historical inscriptions and manuscripts in South Asia remain largely inaccessible because their scans are visually degraded and lack accurate, machine-readable transcriptions. Current archival workflows provide images but do not offer a consistent, automated path from raw scans to enhanced images, verified OCR output, and structured metadata suitable for search and citation. The problem is to design and implement a reliable, multi-artefact digitisation pipeline that can enhance degraded images, binarise text regions, extract script-accurate Unicode transcription, and assemble preservation-ready records while respecting non-destructive processing constraints.
 
 \section[Objectives]{\textbf{Objectives}}
 The objectives of the project are
