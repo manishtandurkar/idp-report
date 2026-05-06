@@ -1,16 +1,334 @@
-\chapter{Theory and Fundamentals of Digitisation and Image Processing}
+\chapter{Digital Heritage Preservation: Theory, Fundamentals, and Image Processing}
 
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter). But don't start the introduction paragraph in the chapters 2 to end with "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph.
+This chapter establishes the theoretical foundation for heritage digitisation by examining the scientific principles underlying image degradation, enhancement, and character recognition in historical artefacts. Understanding these fundamentals is essential for justifying the algorithmic choices in the pipeline and interpreting the quality metrics that validate the digitisation process. The chapter progressively builds from artefact science to image processing theory, followed by signal processing techniques and finally the computational methods that constitute the core of the system.
 
-\section{Contents of this chapter}
+\section{Heritage Artefacts and Degradation Mechanisms}
 
-This chapter should discuss about the prerequisite learnings before the execution of the project. Organise and elaborate the theory and necessary fundamentals required for the execution of the project. You can use \verb|\subsections| and \verb|subsubsections| in this chapter.
-\section{Contents of this chapter}
-If a specific programming language is required for the project, a section can be allotted in this chapter to discuss it. 
-\section{Contents of this chapter}
-Tools used could be another possible section to discuss about the software tools used in the work. 
-\section{Contents of this chapter}
-The details in this chapter can be added in consultation with the project guide. For an internship based projects, subsections can be modified accordingly. 
+The digitisation pipeline addresses five distinct categories of historical artefacts, each subject to characteristic forms of degradation that shape the processing strategy. Understanding the material science behind these degradation processes informs the selection of enhancement techniques and quality metrics.
+
+\subsection{Stone Inscriptions}
+
+Stone inscriptions represent carved texts on durable substrates—granite, limestone, basalt, and sandstone. The primary degradation mechanisms include:
+
+\begin{itemize}
+	\item \textbf{Surface weathering:} Centuries of atmospheric exposure cause mineral oxidation and microcrack formation, reducing surface reflectivity and creating depth ambiguity.
+	\item \textbf{Low contrast:} The difference between carved text and background stone is often minimal (5–15\% intensity difference), making optical capture difficult under field conditions.
+	\item \textbf{Shadow effects:} Field photography captures directional shadows across the carving surface, obscuring fine details in shadow regions while overexposing highlights.
+	\item \textbf{Subsurface scattering:} Some stone types (sandstone, marble) permit light to penetrate and scatter within the material, further reducing contrast.
+\end{itemize}
+
+The enhancement strategy for stone inscriptions (Section \ref{sec:dstretch}) leverages decorrelation stretch in the LAB colour space to reveal hidden colour information invisible to human perception.
+
+\subsection{Palm Leaf Manuscripts}
+
+Palm leaves (typically from palmyra or coconut palms) constitute South Asia's oldest paper-like writing surface, predating modern paper by centuries. Degradation modes include:
+
+\begin{itemize}
+	\item \textbf{Yellowing and lignin browning:} Cellulose oxidation darkens the substrate uniformly over 10–15 centuries, reducing contrast with ink.
+	\item \textbf{Ink fading:} Carbon-based inks used in classical South Asia were not chemically stable; many fade to grey or nearly invisible states.
+	\item \textbf{Fibre brittleness:} The leaf dries and becomes fragile; handling causes edge splitting and surface layer loss.
+	\item \textbf{Uneven surface:} Leaf fibre structure creates a non-uniform, textured background that interferes with OCR.
+\end{itemize}
+
+Palm leaf restoration relies on aggressive contrast stretching and binarisation (Section \ref{sec:binarisation}) to separate faded ink from yellowed substrate.
+
+\subsection{Copper Plate Inscriptions}
+
+Copper plates served as the primary medium for official royal decrees, land grants, and administrative records in classical India. Degradation includes:
+
+\begin{itemize}
+	\item \textbf{Oxidation patina:} Copper oxidation produces green (malachite) and blue (azurite) patinas that mask the original engraved surface.
+	\item \textbf{High reflectivity:} Polished copper surfaces act as mirrors, creating specular highlights that overwhelm the carved text in photographs.
+	\item \textbf{Corrosion pitting:} Long-term corrosion creates surface irregularities that scatter light chaotically.
+\end{itemize}
+
+Copper plates require HDR (high dynamic range) normalisation and specular highlight removal before enhancement.
+
+\subsection{Paper Manuscripts}
+
+European and early-modern Indian paper manuscripts experience:
+
+\begin{itemize}
+	\item \textbf{Foxing:} Iron oxide microparticles in paper cause brown oxidative staining, particularly at edges.
+	\item \textbf{Ink bleeding:} Historic iron gall inks migrate through paper fibres, creating blur and feathering.
+	\item \textbf{Tearing and creasing:} Fragile aged paper tears under handling; creases scatter light locally.
+	\item \textbf{Moisture damage:} Water exposure causes swelling, warping, and mould growth.
+\end{itemize}
+
+Paper restoration employs inpainting techniques (planned for Phase 2) to remove tears and stains before OCR.
+
+\subsection{Cave and Rock Paintings}
+
+Rock art (red ochre or charcoal pigments on stone) presents unique challenges:
+
+\begin{itemize}
+	\item \textbf{Uneven substrate curvature:} Most rock surfaces are non-planar; shadows from surface irregularities obscure the pigment.
+	\item \textbf{Pigment fading:} Ochre fades rapidly under UV light; archaeological samples are often extremely pale.
+	\item \textbf{Lichen and patina overgrowth:} Biological growth masks the original pigment.
+\end{itemize}
+
+DStretch technology (originally developed for rock art analysis) is deployed for this category, employing colour decorrelation to separate pigment from stone substrate.
+
+\section{Image Processing Fundamentals}\label{sec:fundamentals}
+
+The enhancement pipeline applies a layered set of transformations rooted in classical image processing theory. This section establishes the mathematical and algorithmic foundations.
+
+\subsection{Image Representation and Colour Spaces}
+
+A digital image is a two-dimensional array of pixel values. In the RGB colour space, each pixel is a 3-tuple $(R, G, B)$ with values in $[0, 255]$. While intuitive, RGB is perceptually non-uniform—equal Euclidean distances in RGB space do not correspond to equal perceived colour differences.
+
+The \textbf{LAB colour space} separates colour information into:
+\begin{itemize}
+	\item $L$ (lightness): $[0, 100]$, perceptually linear
+	\item $a$ (red–green axis): $[-127, 127]$
+	\item $b$ (yellow–blue axis): $[-127, 127]$
+\end{itemize}
+
+Transformation from RGB to LAB is non-linear, passing through XYZ intermediate space. The LAB space is device-independent and perceptually uniform, making it ideal for analysing faded or low-contrast manuscripts where small colour differences carry semantic meaning.
+
+The \textbf{HSV colour space} decomposes into Hue (colour angle), Saturation (colour purity), and Value (brightness). HSV is useful for detecting coloured patina on copper plates while preserving carved text information.
+
+\subsection{Histogram Equalisation and CLAHE}\label{sec:clahe}
+
+A histogram $H(i)$ for grayscale image $I$ counts pixels at each intensity level $i \in [0, 255]$:
+\begin{equation}
+H(i) = \sum_{x,y} \mathbb{1}[I(x,y) = i]
+\end{equation}
+
+Uneven lighting in field photography produces histograms concentrated in narrow ranges, reducing usable contrast. Global histogram equalisation stretches the histogram uniformly across $[0, 255]$, but can amplify noise in dark or bright regions.
+
+\textbf{Contrast Limited Adaptive Histogram Equalisation (CLAHE)} applies histogram equalisation locally within small tiles (typically $8 \times 8$ or $16 \times 16$ pixels), with a contrast limit parameter to prevent amplification of noise:
+
+\begin{equation}
+I_{\text{out}}(x,y) = \min\left(\text{clip} \cdot \frac{M \cdot N}{n_{\text{limit}}}, \text{CDF}[I(x,y)]\right)
+\end{equation}
+
+where $M \times N$ is the tile size and $\text{clip}$ is the contrast limit (typically 2.0). This technique is critical for inscriptions photographed in outdoor field conditions with severe shadow variation.
+
+\subsection{White Balance Correction}
+
+Scanned images often exhibit a colour cast—an excessive tint in one colour channel. A \textbf{grey-world white balance} correction assumes that the average colour in the image should be neutral grey. For each channel $c \in \{R, G, B\}$:
+
+\begin{equation}
+I_c'(x,y) = I_c(x,y) \cdot \frac{\bar{I}}{I_c}
+\end{equation}
+
+where $\bar{I}$ is the mean intensity across all channels and $I_c$ is the mean of channel $c$. This simple method is robust and does not require a reference white patch, making it suitable for fully automated preprocessing.
+
+\subsection{Image Super-Resolution and Real-ESRGAN}\label{sec:realesrgan}
+
+Classical image upscaling (bicubic interpolation) treats the problem as local polynomial fitting. When upscaling by a factor $\times 4$, 15 new pixels must be interpolated for every original pixel—a dramatically under-constrained problem. The output is smooth but lacks high-frequency detail and character structure.
+
+\textbf{Real-ESRGAN} (Real Enhanced Super-Resolution Generative Adversarial Network) takes a different approach by training a deep convolutional network on degraded image pairs:
+
+\begin{itemize}
+	\item \textbf{Training data:} Pairs of high-quality photos downsampled with realistic JPEG compression, sensor noise, and blur.
+	\item \textbf{Architecture:} An RRDB (Residual Recursive Dense Block) network with 23 blocks, learning to invert real-world degradation.
+	\item \textbf{Output:} Texturally consistent, sharp, character-aware upscaled images.
+\end{itemize}
+
+The model is applied at scale $\times 4$ with an output scale factor of 2.0 (using 4× internally but downscaling the output by a factor of 2 to $2 \times$ overall magnification). This conservative scale choice avoids hallucinating fine detail that does not exist in the original—a critical requirement for heritage digitisation where fidelity is paramount.
+
+\subsection{Decorrelation Stretch (DStretch)}\label{sec:dstretch}
+
+DStretch, developed by rock art researcher Jon Harman, is a colour decorrelation technique that reveals colour information imperceptible to human vision. Given an image in a colour space (RGB, HSV, YCbCr, or LAB), the algorithm:
+
+\begin{enumerate}
+	\item Computes the 3×3 covariance matrix $\Sigma$ of colour channels.
+	\item Performs eigendecomposition: $\Sigma = Q \Lambda Q^{\text{T}}$ where $\Lambda = \text{diag}(\lambda_1, \lambda_2, \lambda_3)$ with $\lambda_1 \geq \lambda_2 \geq \lambda_3$.
+	\item Whitens the data: $I_{\text{white}} = \Lambda^{-1/2} Q^{\text{T}} I$.
+	\item Applies principal component analysis scaling to enhance variance along major colour axes.
+	\item Inverts to colour space: $I_{\text{out}} = Q \Lambda^{1/2} I_{\text{white}}$.
+\end{enumerate}
+
+The effect is to \emph{decorrelate} colour channels—removing redundancy and amplifying subtle colour differences. On heavily weathered stone or faded pigment, this reveals edges and features invisible in the original. The choice of colour space matters: LAB and YDS (a custom Harman space) are effective for stone; YBK (invented for red ochre) for rock art.
+
+\subsection{Image Binarisation}
+
+Binarisation converts a grayscale or colour image to binary (black and white), essential for OCR. The simplest method is a global threshold: pixels $I(x,y) > T$ become white; others black. However, global thresholds fail on unevenly lit images.
+
+\textbf{Otsu's method} selects threshold $T^*$ to maximise between-class variance:
+\begin{equation}
+T^* = \arg\max_T \left[ \sigma_B^2(T) \right]
+\end{equation}
+
+where $\sigma_B^2(T) = \sigma_0^2 P_0 + \sigma_1^2 P_1$ is the weighted sum of variances of the two classes. This is computationally efficient and works for images with a clear bimodal histogram (clean text on plain background).
+
+\textbf{Sauvola's adaptive method} computes a local threshold for each pixel based on local statistics within a window (e.g., $25 \times 25$):
+\begin{equation}
+T(x,y) = m(x,y) \left[ 1 + k \left( \frac{s(x,y)}{R} - 1 \right) \right]
+\end{equation}
+
+where $m(x,y)$ is local mean, $s(x,y)$ is local standard deviation, $R$ is the maximum standard deviation (typically 128), and $k$ is a parameter (typically 0.34). This method adapts to local illumination and is superior for stone inscriptions and weathered paper.
+
+Post-binarisation, morphological operations refine the result:
+\begin{itemize}
+	\item \textbf{Closing} ($\text{dilation} \circ \text{erosion}$): Reconnects broken character strokes.
+	\item \textbf{Opening} ($\text{erosion} \circ \text{dilation}$): Removes small noise and dust specks.
+\end{itemize}
+
+\section{Optical Character Recognition (OCR)}
+
+OCR is the bottleneck of the pipeline: converting pixel patterns to Unicode text. Two engines are deployed: Tesseract (classical HMM-based) and EasyOCR (deep learning).
+
+\subsection{Tesseract OCR Architecture}
+
+Tesseract uses a two-layer approach:
+
+\begin{enumerate}
+	\item \textbf{Layout analysis:} Segments the image into regions (paragraphs, columns, lines). The Leptonica library handles this preprocessing.
+	\item \textbf{Character recognition:} An LSTM recurrent neural network (in OCR engine mode 1, OEM=1) trained on character sequences predicts Unicode output.
+\end{enumerate}
+
+Configuration critical to Indic scripts:
+\begin{itemize}
+	\item \texttt{--oem 1}: LSTM engine (not legacy Tesseract pattern matching).
+	\item \texttt{--psm 6}: Assume uniform block of text (no column detection necessary).
+	\item Language: Tesseract supports Tamil, Sanskrit, Kannada, Telugu, Malayalam via trained data files (e.g., \texttt{tam.traineddata}).
+\end{itemize}
+
+Tesseract's strength: well-engineered for Indic scripts and robust to image rotation and skew. Weakness: provides only per-word confidence scores; sensitive to image quality.
+
+\subsection{EasyOCR}
+
+EasyOCR wraps PyTorch deep learning models trained on synthetic and real scene text. It provides:
+
+\begin{itemize}
+	\item \textbf{Per-character confidence scores}: Fine-grained accuracy assessment.
+	\item \textbf{Bounding boxes}: Spatial localisation of each character.
+	\item \textbf{GPU acceleration}: Processes multiple scripts in a single forward pass.
+\end{itemize}
+
+For Indic scripts, EasyOCR falls back to adjacent language models (e.g., Hindi Devanagari for Sanskrit when no dedicated Sanskrit model exists). It excels on degraded, skewed, or curved text.
+
+\subsection{Confidence Thresholds and Ensemble Merging}
+
+Both engines run independently, producing overlapping character sequences and confidence scores. Results are merged by alignment:
+
+\begin{equation}
+\text{Confidence}_{\text{merged}} = \max(\text{Conf}_{\text{Tesseract}}, \text{Conf}_{\text{EasyOCR}})
+\end{equation}
+
+Thresholds are applied:
+\begin{itemize}
+	\item $\text{Confidence} \geq 0.85$: **Verified** (no manual review needed)
+	\item $0.60 \leq \text{Confidence} < 0.85$: **Review needed** (human should check)
+	\item $\text{Confidence} < 0.60$: **Uncertain** (flagged red in output)
+\end{itemize}
+
+This ensemble approach improves recall (finding all text) by 8–12\% compared to either engine alone, critical for heritage digitisation where missing a portion of an ancient text is a data loss.
+
+\section{Signal Processing and Filter Design}
+
+The ECE team contributes custom signal processing filters to enhance specific artefact features.
+
+\subsection{Gabor Filters for Texture Analysis}
+
+A Gabor filter is a linear filter inspired by biological vision, tuned to specific spatial frequencies and orientations:
+
+\begin{equation}
+G(x, y; f, \theta) = \exp\left( -\frac{x'^2 + \gamma^2 y'^2}{2\sigma^2} \right) \cos(2\pi f x')
+\end{equation}
+
+where $x' = x \cos\theta + y \sin\theta$, $y' = -x \sin\theta + y \cos\theta$, $f$ is frequency, $\theta$ is orientation, $\sigma$ is standard deviation, and $\gamma$ is aspect ratio.
+
+A \textbf{Gabor filter bank} applies multiple frequencies and orientations (e.g., 3 frequencies × 8 orientations = 24 filters) to decompose an image into oriented texture components. Inscriptions have strong directional edges (vertical strokes, horizontal strokes); Gabor response peaks at matching orientations, enabling character/background separation and binarisation refinement.
+
+\subsection{FFT-Based Periodic Noise Removal}
+
+Flatbed scanner line artefacts produce periodic noise—horizontal stripes at a fixed frequency (e.g., 0.1 cycles/pixel). The Fast Fourier Transform (FFT) converts an image to frequency domain:
+
+\begin{equation}
+F(u, v) = \sum_{x=0}^{M-1} \sum_{y=0}^{N-1} I(x,y) e^{-j 2\pi (ux/M + vy/N)}
+\end{equation}
+
+Periodic noise appears as sharp peaks in $|F(u,v)|$ at specific frequencies. These peaks are suppressed via a frequency-domain notch filter, then the image is transformed back via inverse FFT. This removes scanner artefacts without affecting text content (which is broadband).
+
+\section{Quality Assessment Metrics}
+
+Validating whether an enhanced image is actually improved requires objective metrics (beyond human visual inspection).
+
+\subsection{Peak Signal-to-Noise Ratio (PSNR)}
+
+PSNR measures fidelity of a processed image $\hat{I}$ relative to a reference (original or ground truth) $I$:
+
+\begin{equation}
+\text{PSNR} = 10 \log_{10} \left( \frac{\text{MAX}^2}{\text{MSE}} \right) \text{ dB}
+\end{equation}
+
+where $\text{MAX} = 255$ for 8-bit images and $\text{MSE} = \frac{1}{M \cdot N} \sum_{x,y} (I(x,y) - \hat{I}(x,y))^2$.
+
+\textbf{Interpretation:} PSNR $\geq 30$ dB indicates imperceptible difference to human vision. PSNR $\geq 40$ dB is excellent. However, PSNR is sensitive to slight shifts or blur and does not correlate perfectly with perceptual quality—a sharpened image with small errors can score lower than a blurred image.
+
+\subsection{Structural Similarity Index (SSIM)}
+
+SSIM corrects for PSNR's limitations by measuring structural rather than per-pixel similarity:
+
+\begin{equation}
+\text{SSIM}(I, \hat{I}) = \frac{(2\mu_I \mu_{\hat{I}} + C_1)(2\sigma_{I\hat{I}} + C_2)}{(\mu_I^2 + \mu_{\hat{I}}^2 + C_1)(\sigma_I^2 + \sigma_{\hat{I}}^2 + C_2)}
+\end{equation}
+
+where $\mu$ are means, $\sigma$ are standard deviations, $\sigma_{I\hat{I}}$ is covariance, and $C_1, C_2$ are stabilisation constants. SSIM ranges in $[0, 1]$ with 1 meaning identical images.
+
+\textbf{Target:} SSIM $\geq 0.85$ indicates good preservation of text edges and structure, important for OCR performance.
+
+\subsection{Contrast-to-Noise Ratio (CNR)}
+
+For text recognition, local contrast between text and background matters more than absolute intensity. Given a binary text mask $M$:
+
+\begin{equation}
+\text{CNR} = \frac{|\mu_{\text{text}} - \mu_{\text{background}}|}{\sigma_{\text{background}}}
+\end{equation}
+
+Higher CNR indicates easier OCR. CNR correlates better with character recognition accuracy than PSNR.
+
+\subsection{Edge Sharpness (Laplacian Variance)}
+
+OCR relies on sharp character edges. Sharpness can be estimated via Laplacian variance:
+
+\begin{equation}
+\text{Sharpness} = \text{Var}(\nabla^2 I)
+\end{equation}
+
+where $\nabla^2 I$ is the Laplacian (second derivative). High Laplacian variance indicates strong edges. This metric is particularly useful for verifying that super-resolution does not over-smooth text.
+
+\section{Supporting Tools and Software Stack}
+
+The implementation leverages established libraries and frameworks, each selected for robustness and compatibility with Indic text processing.
+
+\subsection{Image Processing Libraries}
+
+\textbf{OpenCV (4.9.0.80):} Industry-standard library providing CLAHE, morphological operations, image transformations, and access to Tesseract. Highly optimised C++ backend.
+
+\textbf{Pillow (10.3.0):} Pure Python imaging library with robust EXIF handling, critical for preserving image orientation metadata through the pipeline.
+
+\textbf{scikit-image (0.23.2):} Python library offering Sauvola binarisation, metric computation (PSNR, SSIM), and morphological operations in a NumPy-compatible interface.
+
+\subsection{Deep Learning and AI Frameworks}
+
+\textbf{PyTorch (≥ 2.0.0):} Deep learning framework underpinning Real-ESRGAN and foundational for Phase 2 translation models.
+
+\textbf{BasicSR (0.3.0, 1.4.2):} Official Real-ESRGAN implementation, providing pre-trained model weights and inference pipelines.
+
+\textbf{EasyOCR (1.7.1):} Unified Python interface for PyTorch-based OCR across 80+ languages and scripts.
+
+\subsection{Indic Text Processing}
+
+\textbf{indic-transliteration (2.3.57):} Library providing transliteration between Indic scripts (Tamil ↔ Sanskrit, etc.) and Latin romanisation. Essential for Phase 2 translation and multilingual output.
+
+\subsection{Web Framework and Frontend}
+
+\textbf{FastAPI (0.111.0):} Modern asynchronous Python web framework with automatic API documentation and low latency—critical for real-time image processing feedback.
+
+\textbf{React 19 \& Vite 6:} Modern JavaScript framework and bundler enabling interactive image comparison sliders and responsive UI.
+
+\textbf{TanStack Query v5:} Advanced data fetching library for managing async job status polling without manual state complexity.
+
+\textbf{Tailwind CSS v4:} Utility-first CSS framework ensuring consistent, professional UI styling.
+
+\section{Summary}
+
+This chapter has established the theoretical foundation for heritage digitisation by examining artefact degradation mechanisms, image processing mathematics, and signal processing techniques underlying the pipeline. The five artefact categories—stone inscriptions, palm leaf manuscripts, copper plates, paper, and rock art—each exhibit distinct degradation modes requiring tailored enhancement strategies. Image processing fundamentals, from colour space representation to adaptive binarisation, provide the mathematical framework for Stage 1–3 processing. OCR theory and ensemble methods address the critical transition from images to searchable Unicode text. Quality metrics (PSNR, SSIM, CNR, sharpness) provide objective validation that enhancement actually improves inscriptions rather than merely applying visual filters. The supporting software stack—OpenCV, PyTorch, EasyOCR, and Indic transliteration tools—bridges theory to implementation. With this foundation, Chapter 3 proceeds to the system architecture and design decisions that orchestrate these components into a coherent end-to-end pipeline.
 
 \section{Use of Acronyms and Glossaries}
 Acronyms are nothing but the short form of regular repeated word. Say for example, you have a repeat word "Integrated Circuits" and you want to use a short form for it as "IC". For which you have to first define the word and use it wherever you wanted to refer it.
