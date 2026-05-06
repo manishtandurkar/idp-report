@@ -5,17 +5,10 @@
 \end{tikzpicture}
 
 
-Highlights of significant contributions: One page with 3 to 4 paragraphs\\
+Historical inscriptions and manuscripts across South Asia preserve invaluable linguistic, cultural, and archaeological information, yet many of these artefacts remain difficult to study because the available scans are degraded by noise, uneven illumination, fading ink, surface weathering, and background texture. These limitations reduce readability and make manual transcription slow, error-prone, and dependent on rare specialist expertise. This report addresses that gap by presenting a non-destructive digitisation pipeline that improves the visual quality of scanned artefacts and prepares them for searchable transcription without altering the original sources.
 
-Paragraph 1: Importance and relevance of Topic, reported issues and limitations of the topic in performance or computation etc, issues involved in those limitations, need for addressing those issues and a short note on how that is addressed in this report.
+The work focuses on a staged workflow that begins with preprocessing and continues through AI-based enhancement, binarisation, OCR, and structured record generation. The pipeline combines image normalisation, denoising, contrast improvement, super-resolution, and adaptive thresholding to make degraded text more legible. OCR is then applied to the enhanced and binarised images to produce Unicode transcriptions, confidence values, and per-line text output, while the final record assembly step stores the results in a structured format suitable for archiving and later retrieval.
 
-
-Paragraph 2: Objectives of this work, short note on algebraic methods used and formulations achieved, computational procedures developed. \gls{ic}.
-
-
-Paragraph 3: Description of simulation procedure including SW tools used and choice of test cases. Short note on results achieved and significant highlights of improvements if any in terms of percentage , for example the architecture presented in this report shows 22 \% improve in power consumption as compared to the previously reported articles.
-\gls{ic}
-
-Paragraph 4: The last para needed only if emulation (after simulation) or Hardware developed to validate simulation results in para 3. 
+The implementation and evaluation use a software stack built around OpenCV, Pillow, Real-ESRGAN, Tesseract, EasyOCR, FastAPI, and a React-based web interface. Representative inscription and manuscript images from different material types, including stone, palm leaf, copper plate, paper, and cave or rock art, are used as test cases to verify the pipeline’s robustness across varied degradation patterns. The results show that the proposed workflow improves contrast, suppresses noise, and produces clearer character regions for transcription, making it a practical foundation for scalable digital preservation and future extension to translation and richer metadata extraction.
 
 \pagebreak
