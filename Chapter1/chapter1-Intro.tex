@@ -61,7 +61,7 @@ The validity of this project is based on the following assumptions and constrain
 \item Original archival images are treated as read-only assets; all processing is non-destructive and writes only to derived output directories.
 \item Phase 1 implementation covers preprocessing, enhancement, binarisation, OCR/transcription, and record assembly/export; only the translation stage is deferred to Phase 2, so translation fields remain null in Phase 1 records.
 \item OCR reliability depends on script support and image condition; Brahmi and Grantha currently require manual transcription due to lack of production-ready off-the-shelf models.
-\item Images with more than 50\% surface damage (for example, severe erosion, missing surface regions, or heavy staining) can produce low-confidence OCR and require manual verification.
+\item As an empirical guideline from current project observations, images with more than 50\% surface damage (for example, severe erosion, missing surface regions, or heavy staining) often produce low-confidence OCR and require manual verification.
 \item Performance observations are based on the selected dataset mix and available compute resources, and may vary with different archives, scan quality, or deployment environments.
 \end{itemize}
 
