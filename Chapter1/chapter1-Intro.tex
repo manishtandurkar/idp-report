@@ -46,7 +46,7 @@ Historical inscriptions and manuscripts in South Asia remain largely inaccessibl
 \section[Objectives]{\textbf{Objectives}}
 The objectives of the project are
 \begin{enumerate}
-\item To develop a non-destructive, multi-artefact digitisation pipeline that preprocesses and enhances degraded historical inscription and manuscript images for improved legibility.
+\item To develop a non-destructive, five-artefact digitisation pipeline for stone inscriptions, palm leaf manuscripts, copper plates, paper manuscripts, and cave/rock paintings, with preprocessing and enhancement for improved legibility.
 \item To extract script-aware Unicode transcriptions through robust binarisation and OCR ensemble processing, with confidence-based tagging for verification and review.
 \item To generate structured, citable digital records by combining processed images, transcription outputs, and artefact metadata in exportable JSON and PDF formats.
 \end{enumerate}
@@ -59,9 +59,9 @@ The validity of this project is based on the following assumptions and constrain
 \begin{itemize}
 \item Input artefacts are already available as scanned or photographed 2D images in standard formats (JPG/PNG/TIFF), and hardware acquisition is outside project scope.
 \item Original archival images are treated as read-only assets; all processing is non-destructive and writes only to derived output directories.
-\item Phase 1 scope ends at transcription (Stages 1--4). Translation is intentionally deferred to Phase 2, so translation fields remain null in Phase 1 records.
+\item Phase 1 implementation covers preprocessing, enhancement, binarisation, OCR/transcription, and record assembly/export; only the translation stage is deferred to Phase 2, so translation fields remain null in Phase 1 records.
 \item OCR reliability depends on script support and image condition; Brahmi and Grantha currently require manual transcription due to lack of production-ready off-the-shelf models.
-\item Very high physical damage (for example, severe erosion, missing surface regions, or heavy staining) can reduce OCR confidence and may require manual verification.
+\item Images with more than 50\% surface damage (for example, severe erosion, missing surface regions, or heavy staining) can produce low-confidence OCR and require manual verification.
 \item Performance observations are based on the selected dataset mix and available compute resources, and may vary with different archives, scan quality, or deployment environments.
 \end{itemize}
 
