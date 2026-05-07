@@ -211,9 +211,9 @@ Both engines run independently, producing overlapping character sequences and co
 
 Thresholds are applied:
 \begin{itemize}
-	\item $\text{Confidence} \geq 0.85$: **Verified** (no manual review needed)
-	\item $0.60 \leq \text{Confidence} < 0.85$: **Review needed** (human should check)
-	\item $\text{Confidence} < 0.60$: **Uncertain** (flagged red in output)
+	\item $\text{Confidence} \geq 0.85$: \textbf{Verified} (no manual review needed)
+	\item $0.60 \leq \text{Confidence} < 0.85$: \textbf{Review needed} (human should check)
+	\item $\text{Confidence} < 0.60$: \textbf{Uncertain} (flagged red in output)
 \end{itemize}
 
 This ensemble approach improves recall (finding all text) by 8–12\% compared to either engine alone, critical for heritage digitisation where missing a portion of an ancient text is a data loss.
@@ -306,7 +306,7 @@ The implementation leverages established libraries and frameworks, each selected
 
 \subsection{Deep Learning and AI Frameworks}
 
-\textbf{PyTorch (\geq 2.0.0):} Deep learning framework underpinning Real-ESRGAN and foundational for Phase 2 translation models.
+\textbf{PyTorch ($\geq$ 2.0.0):} Deep learning framework underpinning Real-ESRGAN and foundational for Phase 2 translation models.
 
 \textbf{BasicSR (0.3.0, 1.4.2):} Official Real-ESRGAN implementation, providing pre-trained model weights and inference pipelines.
 
