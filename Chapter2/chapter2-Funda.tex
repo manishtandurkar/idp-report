@@ -330,30 +330,3 @@ The implementation leverages established libraries and frameworks, each selected
 
 This chapter has established the theoretical foundation for heritage digitisation by examining artefact degradation mechanisms, image processing mathematics, and signal processing techniques underlying the pipeline. The five artefact categories—stone inscriptions, palm leaf manuscripts, copper plates, paper, and rock art—each exhibit distinct degradation modes requiring tailored enhancement strategies. Image processing fundamentals, from colour space representation to adaptive binarisation, provide the mathematical framework for Stage 1–3 processing. OCR theory and ensemble methods address the critical transition from images to searchable Unicode text. Quality metrics (PSNR, SSIM, CNR, sharpness) provide objective validation that enhancement actually improves inscriptions rather than merely applying visual filters. The supporting software stack—OpenCV, PyTorch, EasyOCR, and Indic transliteration tools—bridges theory to implementation. With this foundation, Chapter 3 proceeds to the system architecture and design decisions that orchestrate these components into a coherent end-to-end pipeline.
 
-\section{Use of Acronyms and Glossaries}
-Acronyms are nothing but the short form of regular repeated word. Say for example, you have a repeat word "Integrated Circuits" and you want to use a short form for it as "IC". For which you have to first define the word and use it wherever you wanted to refer it.
-
-First, let's look at the definition, which has to be entered in \texttt{Glossaries.tex} under \texttt{CoverPages} directory.
-\begin{verbatim}
-%\newacronym{<Ref>}{<Short-Form>}{<Expanded word>}
-\newacronym{ic}{IC}{Integrated Circuits}
-\end{verbatim}
-In order to use the defined acronym, use the commands \verb|\gls{<Ref>}| as shown below
-
-As an example, call the definition with \verb|\gls{ic}| and the outcome of it is reflected as, \gls{ic}.
-
-Note: For the First time, the expanded form appears along with the Short-form definition inside parenthesis. But when the \verb|\gls{}| is repeated, only Short-form appears inside the parenthesis.
-
-Now, let's look at the definition of symbols. Follow the syntax to define the symbol first, inside \texttt{Glossaries.tex} under \texttt{CoverPages} directory.
-\begin{verbatim}
-%\newglossaryentry{<Ref>}{name=<Symbol>, description={<description about the symbol>}, type=<List type>}
-\newglossaryentry{rc}{name=$\tau$, description={Time constant}, type=symbolList}
-\end{verbatim}
-
-As an example, the rate of change is defined with \verb|\gls{rc}| and the outcome of it is reflected as, the rate of change is defined with \gls{rc}.
-
-\vspace{0.75cm}
-
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
-
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter.
