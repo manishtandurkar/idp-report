@@ -2,6 +2,86 @@
 
 The architectural design presented in Chapter 3 is realised through a layered implementation spanning image processing scripts, a deep learning inference pipeline, a dual-engine OCR ensemble, a JSON record store, a REST API, and a React frontend. Each stage is encapsulated in a dedicated Python module with a clearly defined function interface, making the overall system modular and testable. This chapter walks through the implementation of each pipeline stage, covering key functions, configuration parameters, and integration mechanisms, before addressing the web backend, web frontend, and testing strategy that complete the Phase 1 system.
 
+\section{Technology Stack and Implementation Phases}
+
+\subsection{Software Dependencies}
+
+Table~\ref{tab:tech_stack} summarises the complete software stack deployed in the Phase 1 implementation. All library versions are pinned in \texttt{requirements.txt} and \texttt{environment.yml} to ensure reproducible builds.
+
+\begin{table}[htb]
+\fontsize{10}{12}\selectfont
+\centering
+\caption{Technology stack: layer, library, and version}
+\label{tab:tech_stack}
+\begin{tabular}{|p{3.8cm}|p{4.8cm}|p{3.2cm}|}
+\hline
+\textbf{Layer} & \textbf{Library} & \textbf{Version} \\
+\hline
+Image processing & OpenCV & 4.9.0.80 \\
+\hline
+Image I/O \& EXIF & Pillow & 10.3.0 \\
+\hline
+Scientific image ops & scikit-image & 0.23.2 \\
+\hline
+Numerical computing & NumPy & 1.26.4 \\
+\hline
+AI super-resolution & Real-ESRGAN (basicsr) & 0.3.0 / 1.4.2 \\
+\hline
+Deep learning runtime & PyTorch & $\geq$ 2.0.0 \\
+\hline
+OCR engine 1 & pytesseract (Tesseract) & 0.3.10 \\
+\hline
+OCR engine 2 & EasyOCR & 1.7.1 \\
+\hline
+Indic transliteration & indic-transliteration & 2.3.57 \\
+\hline
+NLP / Translation (Phase 2) & Hugging Face Transformers & 4.40.0 \\
+\hline
+Web backend & FastAPI + Uvicorn & 0.111.0 / 0.29.0 \\
+\hline
+Web frontend & React 19 + Vite 6 & --- \\
+\hline
+Frontend styling & Tailwind CSS v4 & --- \\
+\hline
+Frontend data-fetching & TanStack Query v5 & --- \\
+\hline
+PDF export & fpdf2 & 2.7.9 \\
+\hline
+JSON storage & TinyDB + SQLAlchemy & 4.8.0 / 2.0.30 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Implementation Phases and Timeline}
+
+The implementation followed a phased schedule aligned with the eight-stage pipeline architecture. Table~\ref{tab:impl_phases} summarises each phase, its primary deliverable, estimated duration, and current status.
+
+\begin{table}[htb]
+\fontsize{10}{12}\selectfont
+\centering
+\caption{Implementation phases and completion status}
+\label{tab:impl_phases}
+\begin{tabular}{|c|p{4.5cm}|p{2.2cm}|p{2.0cm}|}
+\hline
+\textbf{Phase} & \textbf{Deliverable} & \textbf{Duration} & \textbf{Status} \\
+\hline
+1 & Environment setup, folder structure, 5 sample images tested & Week 1 & Complete \\
+\hline
+2 & \texttt{preprocess.py} + \texttt{enhance.py} --- full enhancement pipeline with batch processing & Weeks 2--3 & Complete \\
+\hline
+3 & \texttt{binarise.py} + \texttt{ocr.py} --- binarisation and OCR for Tamil and Sanskrit & Weeks 4--6 & Complete \\
+\hline
+4 & \texttt{translate.py} --- translation layer & Weeks 7--9 & Phase 2 \\
+\hline
+5 & \texttt{record.py} --- record assembly, JSON storage, PDF export & Weeks 10--11 & Complete \\
+\hline
+6 & Web UI (React + FastAPI) --- browse, process, compare & Weeks 12--14 & Complete \\
+\hline
+\end{tabular}
+\end{table}
+
+Phase 4 (translation) is deferred to Phase 2 per mentor guidance. All remaining phases are complete and integrated into the final pipeline.
+
 \section{Stage 1 --- Preprocessing (\texttt{src/preprocess.py})}
 
 Five functions implement the preprocessing chain. They are called in sequence by the main entry point \texttt{preprocess(img\_path, output\_path)}.
@@ -111,6 +191,40 @@ The transcription JSON object contains: \texttt{script} (string), \texttt{text} 
 \section{Pipeline Orchestration (\texttt{src/pipeline.py})}
 
 The orchestrator function \texttt{run\_pipeline(image\_path, artefact\_type, script, metadata)} chains all implemented stages in sequence. Before invoking each stage, it verifies that the input file exists. After each stage completes, it appends an entry to the processing log recording the stage name, elapsed time in seconds, and success or error status. Quality metrics are computed automatically after Stage 2 enhancement by calling \texttt{src/metrics.py} functions (\texttt{compute\_psnr}, \texttt{compute\_ssim}, \texttt{compute\_cnr}, \texttt{compute\_sharpness}), and the metric values are written into the processing log alongside stage timing. The function returns the completed record dictionary and the path to the saved JSON file, providing a single call interface for both the batch command-line runner and the FastAPI background thread.
+
+\section{ECE Signal Processing and Quality Modules}
+
+The ECE team contributes three source modules that extend the core CS/IT pipeline with signal-processing rigour. These modules are called from \texttt{src/pipeline.py} as optional or automatic steps and are fully integrated into the Phase 1 system.
+
+\subsection{Custom Filter Design (\texttt{src/filters.py})}
+
+\textbf{\texttt{gabor\_filter\_bank(img, frequencies=[0.1, 0.2, 0.4], orientations=8)}:} Constructs a bank of $3 \times 8 = 24$ Gabor filters covering three spatial frequencies and eight equally spaced orientations ($0°$ to $157.5°$) \cite{Daugman1985}. Each filter is a complex-valued 2D Gabor kernel with Gaussian envelope. The convolution response is computed for every frequency--orientation pair, producing a 24-channel response tensor. Inscriptions exhibit strong directional edges (vertical and horizontal strokes in Devanagari, diagonal strokes in Tamil); the Gabor bank isolates character-background separation from background texture based on spatial frequency content alone, independent of intensity. The output is used to refine binarisation boundaries on difficult palm leaf and stone samples.
+
+\textbf{\texttt{directional\_edge\_enhance(img, angle\_deg=45.0)}:} Applies a Gabor filter tuned to the specified orientation angle to enhance carving or stroke edges running in a given direction. For palm leaf manuscripts, where horizontal leaf-fibre texture interferes with vertical character strokes, a vertical-orientation Gabor pass sharpens the character edges while suppressing the horizontal fibre pattern.
+
+\textbf{\texttt{remove\_periodic\_noise\_fft(img, threshold=0.1)}:} Converts the image to the frequency domain using the Fast Fourier Transform, identifies spectral peaks above the threshold (which correspond to periodic scanner line artefacts), zeros them using a notch filter mask, and applies the inverse FFT. Because text content is broadband and scanner artefacts are narrowband, this removes scanner stripes without affecting character information.
+
+\subsection{Colour Channel and Histogram Analysis (\texttt{src/analysis.py})}
+
+\textbf{Per-channel statistics:} Functions compute the mean, standard deviation, skewness, and kurtosis for each colour channel (R, G, B and L, a, b in LAB space) across the image. These statistics characterise the colour distribution of each artefact type and inform DStretch colour space parameter selection.
+
+\textbf{DStretch colour space tuning:} Empirical analysis across 20 samples per artefact category determined optimal DStretch colour spaces: LAB and YDS for stone inscriptions, YBK for cave and rock art, and standard LAB for copper plates and paper. These per-material defaults are hard-coded in the \texttt{enhance.py} routing logic.
+
+\textbf{Before/after histogram visualisation:} The \texttt{plot\_histogram\_comparison()} function generates side-by-side per-channel histogram plots of the preprocessed input and the enhanced output, used as report figures to demonstrate quantitative contrast improvement.
+
+\subsection{Image Quality Metrics (\texttt{src/metrics.py})}
+
+The metrics module is automatically called by the pipeline orchestrator after Stage 2 enhancement. All four metrics are computed and stored in the processing log for every processed image.
+
+\textbf{\texttt{compute\_psnr(original, enhanced)}:} Wraps \texttt{skimage.metrics.peak\_signal\_noise\_ratio} to compute PSNR in decibels between the enhanced image and the original scan. Returns a single float.
+
+\textbf{\texttt{compute\_ssim(original, enhanced)}:} Wraps \texttt{skimage.metrics.structural\_similarity} with \texttt{multichannel=True} to compute SSIM across all three colour channels and return the mean value.
+
+\textbf{\texttt{compute\_cnr(img, text\_mask)}:} Accepts the enhanced image and a binary text mask (produced by Sauvola binarisation as a proxy for text pixel locations). Computes $\text{CNR} = |\mu_\text{text} - \mu_\text{bg}| / \sigma_\text{bg}$ where $\mu$ and $\sigma$ are computed from the text and non-text regions of the grayscale image.
+
+\textbf{\texttt{compute\_sharpness(img)}:} Converts the image to grayscale, applies the Laplacian operator (\texttt{cv2.Laplacian}), and returns the variance of the Laplacian response. Higher variance indicates sharper edges.
+
+\textbf{\texttt{full\_quality\_report(original, enhanced, text\_mask)}:} Convenience wrapper that calls all four metric functions and returns a dictionary \texttt{\{"psnr": ..., "ssim": ..., "cnr": ..., "sharpness": ...\}} for insertion into the record's \texttt{processing\_log}.
 
 \section{Web Backend (\texttt{api/})}
 

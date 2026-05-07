@@ -131,7 +131,7 @@ The model is applied at scale $\times 4$ with an output scale factor of 2.0 (usi
 
 \subsection{Decorrelation Stretch (DStretch)}\label{sec:dstretch}
 
-DStretch, developed by rock art researcher Jon Harman, is a colour decorrelation technique that reveals colour information imperceptible to human vision. Given an image in a colour space (RGB, HSV, YCbCr, or LAB), the algorithm:
+DStretch, developed by rock art researcher Jon Harman \cite{Harman2008}, is a colour decorrelation technique that reveals colour information imperceptible to human vision. Given an image in a colour space (RGB, HSV, YCbCr, or LAB), the algorithm:
 
 \begin{enumerate}
 	\item Computes the 3×3 covariance matrix $\Sigma$ of colour channels.
@@ -143,7 +143,7 @@ DStretch, developed by rock art researcher Jon Harman, is a colour decorrelation
 
 The effect is to \emph{decorrelate} colour channels—removing redundancy and amplifying subtle colour differences. On heavily weathered stone or faded pigment, this reveals edges and features invisible in the original. The choice of colour space matters: LAB and YDS (a custom Harman space) are effective for stone; YBK (invented for red ochre) for rock art.
 
-\subsection{Image Binarisation}
+\subsection{Image Binarisation}\label{sec:binarisation}
 
 Binarisation converts a grayscale or colour image to binary (black and white), essential for OCR. The simplest method is a global threshold: pixels $I(x,y) > T$ become white; others black. However, global thresholds fail on unevenly lit images.
 
@@ -224,7 +224,7 @@ The ECE team contributes custom signal processing filters to enhance specific ar
 
 \subsection{Gabor Filters for Texture Analysis}
 
-A Gabor filter is a linear filter inspired by biological vision, tuned to specific spatial frequencies and orientations:
+A Gabor filter is a linear filter inspired by biological vision, tuned to specific spatial frequencies and orientations \cite{Daugman1985}:
 
 \begin{equation}
 G(x, y; f, \theta) = \exp\left( -\frac{x'^2 + \gamma^2 y'^2}{2\sigma^2} \right) \cos(2\pi f x')
@@ -262,7 +262,7 @@ where $\text{MAX} = 255$ for 8-bit images and $\text{MSE} = \frac{1}{M \cdot N} 
 
 \subsection{Structural Similarity Index (SSIM)}
 
-SSIM corrects for PSNR's limitations by measuring structural rather than per-pixel similarity:
+SSIM corrects for PSNR's limitations by measuring structural rather than per-pixel similarity \cite{Wang2004}:
 
 \begin{equation}
 \text{SSIM}(I, \hat{I}) = \frac{(2\mu_I \mu_{\hat{I}} + C_1)(2\sigma_{I\hat{I}} + C_2)}{(\mu_I^2 + \mu_{\hat{I}}^2 + C_1)(\sigma_I^2 + \sigma_{\hat{I}}^2 + C_2)}
