@@ -1,34 +1,230 @@
-\chapter{Code}
-\section{First Appendix}
-You can use \texttt{tcblisting} for creating the code snippets. The following example illustrates how one can customize the \texttt{tcblisting} to achieve the \texttt{tcl} script. Similarly, one can use it for other programming language listing, including HDL.
+\chapter{Project Folder Structure and Code Excerpts}
 
-\begin{tcblisting}{listing only,colback=gray!10!white, breakable, boxsep=0pt,top=1mm,bottom=1mm,left=1mm,right=1mm,
+This appendix provides the complete project folder structure for the Inscription and Manuscript Digitisation system, followed by illustrative code excerpts from the two most technically significant pipeline modules: the preprocessing stage and the OCR ensemble stage.
+
+\section{Project Folder Structure}
+
+The repository is organised into source code, API, frontend, data directories, model weights, documentation deliverables, tests, and outputs. The structure below reflects the Phase 1 implementation.
+
+\begin{tcblisting}{listing only, colback=gray!10!white, breakable, boxsep=0pt,
+top=1mm, bottom=1mm, left=1mm, right=1mm,
 listing options={
-language= tcl,
-basicstyle=\small\ttfamily, 
-otherkeywords={create_clock, set_clock_latency, set_input_delay, set_output_delay, set_load, set_max_fanout, set_fanout_load},
-keywordstyle=\color{blue}, 
-%keywordstyle=[2]{\color{red}},
-commentstyle=\color{gray},
-backgroundcolor=\color{gray!25},
-%morekeywords=[2]{arg,pos},
-%moredelim=[is][\color{violet}]{''}{''},
-escapechar=!}}
-# Since our design has a clock with name clk, 
-## specify that name under [get_port ]
-create_clock -period 40 -waveform {0 20} [get_ports clk]
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  backgroundcolor=\color{gray!25}
+}}
+inscription-digitisation/
+|-- AGENTS.md                    <- project specification and writing guide
+|-- README.md
+|-- requirements.txt
+|-- environment.yml
+|-- data/
+|   |-- raw/                     <- original scans (read-only)
+|   |-- enhanced/                <- Stage 2 output
+|   |-- binarised/               <- Stage 3 output
+|   |-- transcriptions/          <- Stage 4 JSON output
+|   |-- translations/            <- Stage 5 output (Phase 2)
+|   `-- records/                 <- final assembled JSON records
+|-- models/
+|   `-- weights/
+|       |-- RealESRGAN_x4plus.pth
+|       `-- RealESRGAN_x4plus_anime_6B.pth
+|-- api/                         <- FastAPI backend
+|   |-- main.py                  <- /api/images, /api/process, /api/jobs/{id}
+|   |-- jobs.py                  <- thread-safe in-memory job store
+|   `-- pipeline.py              <- adapter calling src/pipeline.py
+|-- web/                         <- React + Vite frontend
+|   `-- src/
+|       |-- App.tsx
+|       |-- types.ts
+|       |-- api/client.ts
+|       |-- hooks/
+|       |   |-- useImages.ts
+|       |   `-- useJob.ts
+|       `-- components/
+|           |-- ImageGrid.tsx
+|           |-- ImageCard.tsx
+|           |-- StagePanel.tsx
+|           |-- ResultViewer.tsx
+|           |-- ComparisonSlider.tsx
+|           `-- ProgressBar.tsx
+|-- src/
+|   |-- preprocess.py            <- Stage 1: normalise, balance, crop
+|   |-- enhance.py               <- Stage 2: Real-ESRGAN, DStretch
+|   |-- binarise.py              <- Stage 3: Sauvola, Otsu, morphology
+|   |-- ocr.py                   <- Stage 4: Tesseract + EasyOCR ensemble
+|   |-- translate.py             <- Stage 5: Phase 2 (not yet active)
+|   |-- record.py                <- Stage 6: JSON assembly, PDF export
+|   |-- pipeline.py              <- orchestrator: chains Stages 1-4, 6
+|   |-- filters.py               <- ECE: Gabor, FFT, directional filters
+|   |-- analysis.py              <- ECE: colour distribution tools
+|   |-- metrics.py               <- ECE: PSNR, SSIM, CNR, sharpness
+|   `-- utils.py                 <- shared helper functions
+|-- docs/
+|   |-- noise_analysis_report.pdf     <- ECE deliverable
+|   |-- project_plan.xlsx             <- IEM deliverable
+|   |-- workflow_analysis.pdf         <- IEM deliverable
+|   |-- cost_benefit_analysis.pdf     <- IEM deliverable
+|   |-- user_guide.pdf                <- IEM deliverable
+|   `-- impact_statement.pdf          <- IEM deliverable
+|-- tests/
+|   |-- test_preprocess.py       <- 4 unit tests
+|   |-- test_api.py              <- 11 integration tests
+|   |-- test_enhance.py
+|   `-- test_ocr.py
+`-- outputs/
+    |-- exports/                 <- PDF exports
+    `-- logs/                    <- processing logs
+\end{tcblisting}
 
-# Setting a 'delay' on the clock:
-set_clock_latency 0.3 clk
+\section{Stage 1 --- Preprocessing Module (\texttt{src/preprocess.py})}
 
-# Setting up constraints on your I/P and O/P pins
-set_input_delay 2.0 -clock clk [all_inputs]!\tikz[remember picture]\node[](c1){};!
-set_output_delay 1.65 -clock clk [all_outputs]!\tikz[remember picture]\node[](c2){};!
+The following excerpt shows the core preprocessing chain and the CLAHE brightness normalisation function. Full error handling and batch processing functions are omitted for brevity.
 
-# Set realistic 'loads' on each output pin
-set_load 0.1 [all_outputs]
+\begin{tcblisting}{listing only, colback=gray!10!white, breakable, boxsep=0pt,
+top=1mm, bottom=1mm, left=1mm, right=1mm,
+listing options={
+  language=Python,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red!70!black},
+  backgroundcolor=\color{gray!25},
+  showstringspaces=false
+}}
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
 
-# Set 'maximum' fanin and fan-out for the input and output pins 
-set_max_fanout 1 [all_inputs]
-set_fanout_load 8 [all_outputs]      
+def load_image(path: str) -> np.ndarray:
+    pil_img = Image.open(path)
+    pil_img = ImageOps.exif_transpose(pil_img)   # bake EXIF orientation
+    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+def normalise_brightness(img: np.ndarray) -> np.ndarray:
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l = clahe.apply(l)
+    return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
+
+def auto_white_balance(img: np.ndarray) -> np.ndarray:
+    result = img.astype(np.float32)
+    mean_all = result.mean()
+    for ch in range(3):
+        ch_mean = result[:, :, ch].mean()
+        if ch_mean > 0:
+            result[:, :, ch] *= mean_all / ch_mean
+    return np.clip(result, 0, 255).astype(np.uint8)
+
+def crop_borders(img: np.ndarray, threshold: int = 10) -> np.ndarray:
+    mask = img.mean(axis=2) > threshold
+    rows = np.where(mask.any(axis=1))[0]
+    cols = np.where(mask.any(axis=0))[0]
+    if rows.size == 0 or cols.size == 0:
+        return img
+    return img[rows[0]:rows[-1]+1, cols[0]:cols[-1]+1]
+
+def preprocess(img_path: str, output_path: str) -> None:
+    img = load_image(img_path)
+    img = normalise_brightness(img)
+    img = auto_white_balance(img)
+    img = crop_borders(img)
+    cv2.imwrite(output_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+\end{tcblisting}
+
+\section{Stage 4 --- OCR Ensemble (\texttt{src/ocr.py})}
+
+The following excerpt shows the ensemble merging logic that combines Tesseract and EasyOCR outputs by maximum confidence score.
+
+\begin{tcblisting}{listing only, colback=gray!10!white, breakable, boxsep=0pt,
+top=1mm, bottom=1mm, left=1mm, right=1mm,
+listing options={
+  language=Python,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red!70!black},
+  backgroundcolor=\color{gray!25},
+  showstringspaces=false
+}}
+import pytesseract
+import easyocr
+import numpy as np
+from typing import List, Dict, Any
+
+CONFIDENCE_VERIFIED   = 0.85
+CONFIDENCE_REVIEW     = 0.60
+
+def run_tesseract(img: np.ndarray, lang: str) -> List[Dict]:
+    cfg = "--oem 1 --psm 6"
+    data = pytesseract.image_to_data(
+        img, lang=lang, config=cfg,
+        output_type=pytesseract.Output.DICT
+    )
+    words = []
+    for i, text in enumerate(data["text"]):
+        if text.strip() and data["conf"][i] >= 0:
+            words.append({
+                "text": text,
+                "confidence": data["conf"][i] / 100.0,
+                "bbox": [data["left"][i], data["top"][i],
+                         data["width"][i], data["height"][i]]
+            })
+    return words
+
+def run_easyocr(img: np.ndarray, lang_code: str) -> List[Dict]:
+    reader = easyocr.Reader([lang_code], gpu=True)
+    results = reader.readtext(img, detail=1)
+    return [{"text": r[1], "confidence": r[2], "bbox": r[0]}
+            for r in results]
+
+def merge_results(tess: List[Dict],
+                  easy: List[Dict]) -> List[Dict]:
+    merged = list(tess)
+    for e_word in easy:
+        ex, ey = e_word["bbox"][0], e_word["bbox"][1]
+        best_match = None
+        best_dist  = 20          # pixel tolerance
+        for t_word in tess:
+            tx, ty = t_word["bbox"][0], t_word["bbox"][1]
+            dist = ((ex - tx)**2 + (ey - ty)**2) ** 0.5
+            if dist < best_dist:
+                best_dist  = dist
+                best_match = t_word
+        if best_match is not None:
+            if e_word["confidence"] > best_match["confidence"]:
+                best_match.update(e_word)
+        else:
+            merged.append(e_word)
+    return merged
+
+def classify_confidence(conf: float) -> str:
+    if conf >= CONFIDENCE_VERIFIED:
+        return "verified"
+    if conf >= CONFIDENCE_REVIEW:
+        return "review_needed"
+    return "uncertain"
+
+def transcribe(img: np.ndarray,
+               script: str,
+               tess_lang: str,
+               easy_lang: str) -> Dict[str, Any]:
+    tess_words = run_tesseract(img, tess_lang)
+    easy_words = run_easyocr(img, easy_lang)
+    merged     = merge_results(tess_words, easy_words)
+    for w in merged:
+        w["status"] = classify_confidence(w["confidence"])
+    overall_conf = (sum(w["confidence"] for w in merged) / len(merged)
+                    if merged else 0.0)
+    return {
+        "script":             script,
+        "text":               " ".join(w["text"] for w in merged),
+        "lines":              merged,
+        "overall_confidence": overall_conf,
+        "engine_used":        "tesseract+easyocr ensemble",
+        "uncertain_regions":  [w["bbox"] for w in merged
+                               if w["status"] == "uncertain"]
+    }
 \end{tcblisting}
