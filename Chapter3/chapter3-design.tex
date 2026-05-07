@@ -1,27 +1,203 @@
 \chapter{Design of the AI-Assisted Digitisation Pipeline}
 
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter).But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph. 
-\section{Contents of this Chapter}
-This chapter should contain the following sections and subsections in detail.
+The AI-assisted digitisation pipeline for historical inscriptions and manuscripts is built around a set of functional requirements, modular stage boundaries, and artefact-specific processing strategies that together translate the project's preservation goals into a concrete software architecture. This chapter presents the design decisions that underpin the system: the functional specifications and overall pipeline layout, the per-stage algorithmic choices and model selection rationale, the record schema that standardises archival output, and the non-destructive processing policy that ensures original artefacts are never placed at risk. These design elements form a coherent blueprint that Chapter 4 then implements.
+
+\section{Functional Requirements and Design Specifications}
+
+The system must satisfy seven core functional requirements derived from the project objectives:
+
 \begin{enumerate}
-\item Specifications for the Design
-\item Pre analysis work for the design or Models used
-\item Design methodology in detail
-\item Design Equations
-\item Experimental techniques (if any)
+    \item \textbf{Multi-artefact support:} Accept images from five artefact categories (stone inscriptions, palm leaf manuscripts, copper plates, paper manuscripts, and cave paintings), routing each through an artefact-specific processing chain.
+    \item \textbf{Non-destructive processing:} Original images must never be overwritten. All outputs are written to separate directories, preserving the source artefact in its original form.
+    \item \textbf{Scalable throughput:} The pipeline must process at least 10 images per minute on a single GPU to be practically useful for institutional-scale digitisation.
+    \item \textbf{Confidence-tagged OCR output:} Unicode transcriptions must carry per-word confidence scores classified as verified ($\geq 0.85$), review-needed ($0.60$--$0.84$), or uncertain (below $0.60$).
+    \item \textbf{Structured archival records:} Each processed artefact produces a machine-readable JSON record containing the image paths, transcription, metadata, processing log, and citation information.
+    \item \textbf{Researcher-ready export:} Records must be exportable as multi-page PDFs with side-by-side image comparisons, transcription annotations, metadata tables, and citation blocks.
+    \item \textbf{Accessible web interface:} A browser-based portal must allow non-technical users to upload images, monitor processing progress, browse records, and download exports without requiring command-line access.
 \end{enumerate}
-Apart from the aforementioned sections, you can add sections as per the requirements of the project in consultation with your guide.
 
-\section{Paraphrasing}
-When you paraphrase a written passage, you rewrite it to state the essential ideas in your own words. Because you do not quote your source word for word when paraphrasing, it is unnecessary to enclose the paraphrased material in quotation marks. However, the paraphrased material must be properly referenced because the ideas are taken from someone else whether or not the words are identical. 
+The overall quality targets are PSNR $\geq 30$ dB, SSIM $\geq 0.85$, OCR confidence $\geq 0.70$, and character error rate (CER) $\leq 0.15$ across the test dataset. The modular design ensures that each stage can be upgraded or replaced independently without affecting the interface contracts of adjacent stages.
 
-Ordinarily, the majority of the notes you take during the research phase of writing your report will paraphrase the original material. Paraphrase only the essential ideas. Strive to put original ideas into your own words without distorting them."
+\section{Overall Pipeline Architecture}
 
-\section{Quotations}
-When you have borrowed words, facts, or idea of any kind from someone else's work, acknowledge your debt by giving your source credit in footnote (or in running text as cited reference). Otherwise, you will be guilty of plagiarism. Also, be sure you have represented the original material honestly and accurately. Direct word to word quotations are enclosed in quotation marks."
+The pipeline is structured as eight sequential stages. Table~\ref{tab:pipeline_overview} summarises each stage, its processing operation, and its output format.
 
-\vspace{0.75cm}
+\begin{table}[htb]
+\fontsize{10}{12}\selectfont
+\centering
+\caption{Pipeline stage overview: input, processing, and output}
+\label{tab:pipeline_overview}
+\begin{tabular}{|c|p{3.2cm}|p{4.2cm}|p{3.2cm}|}
+\hline
+\textbf{Stage} & \textbf{Name} & \textbf{Processing} & \textbf{Output} \\
+\hline
+1 & Preprocessing & CLAHE, white balance, EXIF orientation, border crop & Normalised JPEG (quality=95) \\
+\hline
+2 & AI Enhancement & Real-ESRGAN, denoising, DStretch, sharpening & Enhanced JPEG \\
+\hline
+3 & Binarisation & Sauvola adaptive thresholding, morphological closing & Binary PNG \\
+\hline
+4 & OCR \& Transcription & Tesseract + EasyOCR ensemble, confidence merging & Transcription JSON \\
+\hline
+5 & Translation & OPUS-MT / LLM fallback (Phase 2 only) & Translation JSON \\
+\hline
+6 & Record Assembly & Metadata binding, processing log & Final JSON record \\
+\hline
+7 & Storage \& Export & JSON database, PDF generation & Archived record + PDF \\
+\hline
+8 & Web UI & FastAPI REST + React frontend & Browser-accessible portal \\
+\hline
+\end{tabular}
+\end{table}
 
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
+Stages 1--4 and 6--8 are fully implemented in Phase 1. Stage 5 (Translation) is architecturally designed with model selection complete, but deferred to Phase 2 per mentor guidance: reliable OCR quality must be demonstrated before a translation layer is introduced, to prevent errors from compounding across stages. In all Phase 1 records, the translation field contains \texttt{null} and the status reads \texttt{"phase\_2\_pending"}.
 
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter.  
+\subsection{Design Principles}
+
+Three principles govern every architectural decision in the system.
+
+\textbf{Non-destructive preservation:} The \texttt{data/raw/} directory is read-only at all times. Every processing stage writes exclusively to its own output directory (\texttt{data/enhanced/}, \texttt{data/binarised/}, etc.). No original image file is ever modified or overwritten.
+
+\textbf{Modular, artefact-aware routing:} Rather than applying a single fixed chain to every input, the pipeline selects enhancement parameters appropriate for each artefact type. This routing is implemented as a configuration look-up keyed on the artefact type string provided by the user at submission time, making it easy to add new artefact categories in future without modifying existing chains.
+
+\textbf{Confidence-driven quality transparency:} Every pipeline output carries an associated quality measure. Image quality is reported as PSNR, SSIM, CNR, and sharpness. OCR output carries per-word confidence scores. This allows downstream users and automated checks to prioritise review effort on low-confidence regions rather than processing all output uniformly.
+
+\section{Stage-by-Stage Design}
+
+\subsection{Stage 1 --- Preprocessing Design}
+
+The preprocessing stage normalises raw scanned images to a consistent quality baseline before any AI processing occurs. The design specifies four operations applied in sequence:
+
+\begin{itemize}
+    \item \textbf{EXIF orientation correction:} Camera images carry an EXIF orientation tag indicating how the image was rotated at capture. The design requires this tag to be baked into pixel data before saving so that all downstream stages receive a geometrically upright image regardless of capture orientation. This is performed using \texttt{PIL.ImageOps.exif\_transpose}.
+    \item \textbf{Brightness normalisation:} Contrast Limited Adaptive Histogram Equalisation (CLAHE) with \texttt{clipLimit=2.0} and \texttt{tileGridSize=(8, 8)} is applied to the luminance channel in LAB colour space. Applying CLAHE only to luminance avoids introducing colour artefacts while correcting spatially uneven illumination from field photography.
+    \item \textbf{White balance:} A grey-world assumption correction scales each colour channel's gain by the ratio of the global mean intensity to the per-channel mean. This removes systematic colour casts from scanner lamps or sunlight without requiring a reference white patch.
+    \item \textbf{Border removal:} Rows and columns where the mean pixel intensity falls below a threshold of 10 (near-black) are identified as scanner margins and removed. This prevents scanner beds and dark borders from interfering with histogram-based enhancement in Stage 2.
+\end{itemize}
+
+The output format is JPEG at quality=95. TIFF was evaluated but rejected due to metadata write failures with the PIL/libtiff combination on Windows hosts. Quality=95 JPEG is indistinguishable from lossless for all subsequent pipeline operations.
+
+\subsection{Stage 2 --- AI Enhancement Design}
+
+The enhancement stage is the core value-add of the system: it transforms previously illegible scans into visually recoverable images. Three components are composed into artefact-specific chains.
+
+\textbf{Denoising:} Non-local means (NLM) denoising is selected over Gaussian blur or median filtering because NLM compares patches across the whole image to average similar regions, preserving text edge structure while suppressing noise. The denoising strength is a per-artefact parameter informed by ECE noise characterisation: 10 for stone inscriptions (Gaussian and salt-and-pepper noise at moderate levels), 15 for palm leaf manuscripts (heavier Gaussian noise from yellowed substrate), and 8 for copper plates (lower strength to preserve metallic texture detail).
+
+\textbf{Super-resolution --- Real-ESRGAN:} Bicubic upscaling cannot recover high-frequency character detail from degraded scans. Real-ESRGAN \cite{Wang2021}, trained on pairs of high-quality photographs and their realistically degraded counterparts, learns the inverse of real-world degradation functions and produces textured, character-aware outputs. The RRDB architecture (23 residual dense blocks, 64 feature maps) captures both global structure and fine character strokes. The design uses \texttt{RealESRGAN\_x4plus.pth} for most inscription types and \texttt{RealESRGAN\_x4plus\_anime\_6B.pth} for line-art carving styles. The output scale is set to 2 (using the 4$\times$ model internally but downsampling by a factor of 2), which avoids hallucinating detail that is not present in the original scan --- a critical requirement when fidelity to the historical source is paramount.
+
+\textbf{DStretch:} Decorrelation stretch, developed by Jon Harman \cite{Harman2008} for rock art analysis, reveals colour information imperceptible to human vision by removing inter-channel correlation. The eigendecomposition of the pixel colour covariance matrix whitens the colour space, amplifying subtle colour differences. This is particularly powerful for stone inscriptions and cave paintings where the visual distinction between inscription and substrate is too faint for standard enhancement. LAB colour space is used for stone; YBK for cave and rock art.
+
+\textbf{Sharpening:} Unsharp masking with amount=1.5 is applied after super-resolution to crisp character edge definition, compensating for any residual blur from the denoising or upscaling steps.
+
+The per-artefact processing chains are designed as follows:
+\begin{itemize}
+    \item Stone inscriptions: denoise $\rightarrow$ Real-ESRGAN $\rightarrow$ sharpen
+    \item Cave / rock paintings: denoise $\rightarrow$ DStretch (YBK) $\rightarrow$ sharpen
+    \item Palm leaf manuscripts: white balance $\rightarrow$ denoise $\rightarrow$ Real-ESRGAN
+    \item Copper plate inscriptions: HDR normalisation $\rightarrow$ denoise $\rightarrow$ Real-ESRGAN
+    \item Paper manuscripts: denoise $\rightarrow$ Real-ESRGAN $\rightarrow$ sharpen
+\end{itemize}
+
+\subsection{Stage 3 --- Binarisation Design}
+
+Binarisation converts the enhanced colour image to a clean binary image (black text on white background) suitable for OCR. Three methods are designed, with a preferred default:
+
+\textbf{Primary method --- Sauvola adaptive thresholding \cite{Dhanya2020}:} Sauvola's local threshold adapts to local pixel statistics within a 25$\times$25 pixel window, using the local mean and standard deviation to compute a pixel-specific threshold. This handles spatially uneven backgrounds (stone surface texture, aged palm leaf fibre) far better than global methods. Sauvola is selected as the default for all five artefact types.
+
+\textbf{Secondary --- Otsu global thresholding:} Otsu's method maximises between-class variance to select a single global threshold from the histogram. It is appropriate for clean paper manuscripts where the background is uniform and the bimodal histogram assumption holds.
+
+\textbf{Fallback --- OpenCV adaptive mean thresholding:} Available for images of mixed quality where Sauvola produces excessive noise due to extreme local intensity variation.
+
+Post-binarisation, two refinement steps are applied: a 2$\times$2 morphological closing kernel (\texttt{cv2.MORPH\_CLOSE}) reconnects broken character strokes caused by surface erosion on stone inscriptions; and a minimum blob size filter (50 pixels) removes dust particles and surface damage artefacts that appear as disconnected components too small to represent character strokes. The output format is PNG (lossless), which introduces no compression artefacts on binary data --- an important distinction from JPEG, which would degrade the clean text/background boundary.
+
+\subsection{Stage 4 --- OCR and Transcription Design}
+
+The OCR stage is the most architecturally complex because no single off-the-shelf engine reliably handles ancient Indic scripts. The design deploys two engines in parallel, then merges their outputs by confidence.
+
+\textbf{Engine 1 --- Tesseract:} Configured with \texttt{--oem 1} (LSTM engine) and \texttt{--psm 6} (uniform text block). Six Indic scripts are supported through Tesseract-trained data files: Tamil (\texttt{tam}), Sanskrit (\texttt{san}), Kannada (\texttt{kan}), Telugu (\texttt{tel}), Malayalam (\texttt{mal}), and Devanagari (\texttt{hin}).
+
+\textbf{Engine 2 --- EasyOCR:} Provides per-character confidence scores, per-word bounding boxes, and GPU-accelerated inference. For scripts without a dedicated EasyOCR model (Sanskrit, Brahmi), the Hindi Devanagari model (\texttt{'hi'}) is used as a fallback.
+
+\textbf{Ensemble merging:} Both engines process the same binarised image independently. Results are spatially aligned by bounding box centre, and the maximum confidence score determines the merged output. Three confidence bands classify the output:
+\begin{itemize}
+    \item Confidence $\geq 0.85$: Verified --- no manual review required.
+    \item $0.60 \leq$ confidence $< 0.85$: Review needed --- flagged for human verification.
+    \item Confidence $< 0.60$: Uncertain --- highlighted in output and recorded in \texttt{uncertain\_regions}.
+\end{itemize}
+
+Brahmi and Grantha scripts are not supported in Phase 1 because no production-ready off-the-shelf OCR model exists for them. Artefacts in these scripts are flagged for manual transcription. A custom model for Brahmi using the 1032-character Ashokan Brahmi dataset \cite{Aitha2023} is planned for Phase 2.
+
+\subsection{Stage 6 --- Record Assembly Design}
+
+Every processed artefact is bundled into a single structured JSON record that serves as the permanent archival unit. The design priorities are completeness, unique identification, and future extensibility.
+
+\textbf{Record ID format:} \texttt{INS-\{YYYY\}-\{NNNN\}} (for example, \texttt{INS-2024-0047}), providing persistent identification that is stable across software updates and platform migrations.
+
+\textbf{Schema fields:} The record captures artefact metadata (type, material, period, dynasty, location with coordinates, dimensions, condition, collection name, accession number), image paths (original, enhanced, binarised, thumbnail), transcription data (script, full Unicode text, per-line breakdown, confidence scores, OCR engine used), and the processing log (per-stage duration, software version, model weights version). The citation field contains a suggested academic citation string, a DOI placeholder, and a CC BY 4.0 licence declaration.
+
+\textbf{Future-proof schema:} The translation field is set to \texttt{null} in Phase 1. The schema is specifically designed so that no structural change will be required when Phase 2 populates this field, preventing any migration work on existing records.
+
+\subsection{Stage 8 --- Web Interface Design}
+
+The web interface was redesigned from an earlier Gradio prototype. Gradio was rejected because it cannot support the before/after comparison slider, asynchronous job polling, or a responsive sidebar layout --- all of which are required for a usable digitisation tool. The replacement architecture is FastAPI (backend) with React 19 (frontend).
+
+\textbf{Backend design --- three primary endpoints:}
+\begin{itemize}
+    \item \texttt{GET /api/images} --- Lists all images in \texttt{data/raw/}.
+    \item \texttt{POST /api/process} --- Accepts uploaded images and metadata; returns a job ID immediately; background thread runs the pipeline.
+    \item \texttt{GET /api/jobs/\{id\}} --- Returns current job status and results when complete.
+\end{itemize}
+
+\textbf{Frontend design --- five UI tabs:} (1) Process --- upload, fill metadata, submit and monitor; (2) Browse --- searchable gallery of all records; (3) View Record --- before/after comparison slider and transcription display; (4) Export --- download as PDF or JSON; (5) Translation --- disabled in Phase 1, enabled in Phase 2.
+
+\section{Key Design Decisions and Rationale}
+
+Table~\ref{tab:design_decisions} consolidates the major design choices made during the architecture phase and the reasoning behind each selection.
+
+\begin{table}[htb]
+\fontsize{10}{12}\selectfont
+\centering
+\caption{Key design decisions and rationale}
+\label{tab:design_decisions}
+\begin{tabular}{|p{4.5cm}|p{8.2cm}|}
+\hline
+\textbf{Design Decision} & \textbf{Rationale} \\
+\hline
+Real-ESRGAN over bicubic upscaling & Trained on real-world degraded photographs; recovers character stroke texture that polynomial interpolation cannot reconstruct \\
+\hline
+DStretch for cave art and stone & Eigendecomposition-based colour decorrelation reveals features invisible to the human eye; originally developed specifically for rock art analysis \\
+\hline
+Sauvola as default binarisation & Adapts to spatially uneven backgrounds (stone texture, palm leaf fibre); Otsu's global threshold fails on non-uniform illumination \\
+\hline
+EasyOCR + Tesseract ensemble & Neither engine alone is reliable for ancient Indic scripts; combining by maximum confidence improves recall and reduces CER \\
+\hline
+JSON record format & Human-readable, version-controllable, and trivially convertible to XML, CSV, or RDF for downstream reuse \\
+\hline
+React + FastAPI over Gradio & Enables the before/after comparison slider, asynchronous job polling, and sidebar layout not achievable in Gradio \\
+\hline
+JPEG quality=95 for preprocessing & Avoids PIL/libtiff compatibility failures on Windows; quality=95 is indistinguishable from lossless for all downstream stages \\
+\hline
+\texttt{outscale=2} for Real-ESRGAN & Uses the 4$\times$ model internally but outputs at 2$\times$ to avoid hallucinating detail not present in the original inscription \\
+\hline
+Phase 1 endpoint at OCR & Mentor guidance: deliver robust, well-evaluated transcription before adding translation; prevents translation errors from compounding OCR errors \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Non-Destructive Processing Policy}
+
+The non-destructive processing policy is a mandatory system constraint adopted from archival preservation standards. It applies to all pipeline stages without exception and encompasses five rules:
+
+\begin{enumerate}
+    \item \textbf{Read-only originals:} The \texttt{data/raw/} directory is never written to by any pipeline process. All enhanced, binarised, and assembled outputs go to designated sibling directories.
+    \item \textbf{3-2-1 backup rule:} Three copies of original data are maintained on two different storage media, with one copy held offsite or in cloud storage.
+    \item \textbf{EXIF metadata preservation:} Orientation and capture metadata extracted at Stage 1 are re-embedded into all output images throughout the pipeline.
+    \item \textbf{Full processing log:} Every record includes a \texttt{processing\_log} field recording the pipeline stage, timestamp, software version, and model weights version for each operation, providing a complete and reproducible audit trail.
+    \item \textbf{Model version control:} The exact model weights file used for each enhancement is recorded in the record, enabling future re-processing with updated models while preserving provenance of every existing record.
+\end{enumerate}
+
+This policy ensures that no irreplaceable historical source is damaged or lost through the digitisation process, and that every digital record produced is fully reproducible and attributable to a specific software configuration.
+
+\section{Summary}
+
+The design of the AI-assisted digitisation pipeline is built on functional requirements that address the practical needs of heritage institutions: multi-artefact processing, non-destructive handling of originals, confident and transparent OCR output, and researcher-ready export. The eight-stage architecture provides clear interface boundaries between preprocessing, enhancement, binarisation, transcription, and record assembly, enabling modular improvement of any single stage. The key design decisions -- Real-ESRGAN for super-resolution, DStretch for colour-faint inscriptions, Sauvola for adaptive binarisation, and a dual-engine OCR ensemble -- are each grounded in the specific degradation characteristics of South Asian heritage artefacts. The non-destructive processing policy and confidence-based output classification ensure that the system can be deployed in institutional archival workflows without risk to the source collection. Chapter 4 now details how each of these design decisions is realised in working code across the pipeline's implementation.

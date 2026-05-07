@@ -1,19 +1,175 @@
 \chapter{Implementation of the Digitisation Pipeline}
 
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter).But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph. 
+The architectural design presented in Chapter 3 is realised through a layered implementation spanning image processing scripts, a deep learning inference pipeline, a dual-engine OCR ensemble, a JSON record store, a REST API, and a React frontend. Each stage is encapsulated in a dedicated Python module with a clearly defined function interface, making the overall system modular and testable. This chapter walks through the implementation of each pipeline stage, covering key functions, configuration parameters, and integration mechanisms, before addressing the web backend, web frontend, and testing strategy that complete the Phase 1 system.
 
-\section{Contents of this chapter}
-This chapter should elaborate the following in detail.
+\section{Stage 1 --- Preprocessing (\texttt{src/preprocess.py})}
+
+Five functions implement the preprocessing chain. They are called in sequence by the main entry point \texttt{preprocess(img\_path, output\_path)}.
+
+\textbf{\texttt{load\_image(path)}:} Reads the image from disk as a BGR NumPy array using OpenCV, then applies \texttt{PIL.ImageOps.exif\_transpose} from the Pillow library to bake the EXIF orientation tag into the pixel data. This step is critical for field photographs taken at arbitrary camera angles: without it, subsequent stages would receive rotated images that would degrade CLAHE tiling, OCR layout detection, and visual comparison results.
+
+\textbf{\texttt{normalise\_brightness(img)}:} Converts the BGR image to LAB colour space, isolates the L (lightness) channel, and applies OpenCV's CLAHE (\texttt{cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))}). The enhanced L channel is merged back into LAB and converted to BGR. Operating exclusively on the lightness channel ensures that colour information, which is used by DStretch in Stage 2, is not altered by the brightness normalisation step.
+
+\textbf{\texttt{auto\_white\_balance(img)}:} Implements the grey-world assumption. For each colour channel $c \in \{B, G, R\}$, the channel mean $\mu_c$ is computed. Each channel is multiplied by $\bar{\mu} / \mu_c$, where $\bar{\mu}$ is the mean of all three channel means. The result is clipped to $[0, 255]$. This automated correction removes systematic colour casts without requiring a physical reference target.
+
+\textbf{\texttt{crop\_borders(img, threshold=10)}:} Computes the per-row and per-column pixel mean. Rows and columns whose mean falls below the threshold value of 10 (near-black, corresponding to scanner bed or dark margin) are identified as border regions. The function identifies the innermost non-border rows and columns on all four sides and returns the cropped sub-image.
+
+\textbf{\texttt{process\_directory(input\_dir, output\_dir)}:} Iterates over all supported image files in \texttt{input\_dir} (JPEG, PNG, and TIFF), calls \texttt{preprocess()} for each, and saves the normalised output to \texttt{output\_dir} as JPEG with quality=95.
+
+\section{Stage 2 --- AI Enhancement (\texttt{src/enhance.py})}
+
+\subsection{Denoising}
+
+\textbf{\texttt{denoise(img, strength=10)}:} Wraps OpenCV's \texttt{cv2.fastNlMeansDenoisingColored}, which applies non-local means filtering across all three colour channels. The \texttt{h} parameter (filter strength) is set to the \texttt{strength} argument. ECE noise analysis informed three default values: 10 for stone inscriptions, 15 for palm leaf manuscripts, and 8 for copper plates. Higher values suppress more noise but risk blurring fine character strokes, so the parameter is conservative for artefact types with dense script.
+
+\subsection{Real-ESRGAN Super-Resolution}
+
+\textbf{\texttt{enhance\_with\_realesrgan(img, scale=2, model\_path)}:} Constructs an \texttt{RRDBNet} model with parameters \texttt{num\_in\_ch=3}, \texttt{num\_out\_ch=3}, \texttt{num\_feat=64}, \texttt{num\_block=23}, \texttt{num\_grow\_ch=32} matching the pre-trained \texttt{RealESRGAN\_x4plus.pth} architecture \cite{Wang2021}. The \texttt{RealESRGANer} inference wrapper is configured with:
+\begin{itemize}
+    \item \texttt{tile=400} --- tiles large images into 400-pixel blocks before inference to prevent GPU out-of-memory errors on high-resolution inscription scans.
+    \item \texttt{tile\_pad=10} --- adds a 10-pixel overlap between tiles to avoid visible seam artefacts at tile boundaries.
+    \item \texttt{half=False} --- uses full 32-bit floating point precision, avoiding numerical instability on inscriptions with very low contrast gradients.
+    \item \texttt{outscale=2} --- outputs at 2$\times$ magnification from the internally 4$\times$ model, preventing hallucinated detail on dense ancient character sets.
+\end{itemize}
+
+For line-art carving styles, \texttt{RealESRGAN\_x4plus\_anime\_6B.pth} is selected instead, as its lighter 6-block architecture is better tuned to sharp-edged line patterns.
+
+\subsection{DStretch Colour Decorrelation}
+
+\textbf{\texttt{dstretch(img, colour\_space="LAB")}:} Implements the DStretch algorithm \cite{Harman2008} in pure Python using NumPy. The steps are:
 \begin{enumerate}
-\item Implementation details for hardware based projects
-\item Top level Design for software based projects
+    \item Convert the image to the specified colour space (LAB, YCbCr, or a Harman custom space such as YBK).
+    \item Reshape the three-channel image to an $(N \times 3)$ pixel matrix $P$, where $N$ is the total pixel count.
+    \item Compute the $3 \times 3$ covariance matrix $\Sigma = \frac{1}{N} P^T P - \bar{p}\bar{p}^T$, where $\bar{p}$ is the channel mean vector.
+    \item Perform eigendecomposition: $\Sigma = Q \Lambda Q^T$, where $Q$ is the eigenvector matrix and $\Lambda = \text{diag}(\lambda_1, \lambda_2, \lambda_3)$.
+    \item Whiten: $P_{\text{white}} = (P - \bar{p}) Q \Lambda^{-1/2}$.
+    \item Re-correlate: $P_{\text{out}} = P_{\text{white}} \Lambda^{1/2} Q^T + \bar{p}$.
+    \item Clip to $[0, 255]$ and convert back to BGR.
 \end{enumerate}
 
-You can add sections and sub sections to elaborate your project work done.
+The effect is to decorrelate the colour channels, amplifying colour differences invisible in the original image. This reveals inscription pigment on stone and rock surfaces where the colour contrast is below the threshold of human perception.
 
-\vspace{0.75cm}
+\subsection{Sharpening and Chain Orchestration}
 
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
+\textbf{\texttt{sharpen(img, amount=1.5)}:} Computes a Gaussian-blurred version of the image (\texttt{sigma=1.0}), then adds the weighted difference to the original: $I_\text{out} = I + \text{amount} \cdot (I - \text{blur}(I))$. This unsharp mask recovers edge definition after denoising and super-resolution.
 
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter. 
+\textbf{\texttt{enhance(img\_path, output\_path, use\_dstretch=False)}:} The main entry point selects the per-artefact chain. Stone inscriptions and paper manuscripts run denoise $\rightarrow$ Real-ESRGAN $\rightarrow$ sharpen. Cave paintings run denoise $\rightarrow$ DStretch $\rightarrow$ sharpen. Palm leaf manuscripts run white balance $\rightarrow$ denoise $\rightarrow$ Real-ESRGAN.
 
+\section{Stage 3 --- Binarisation (\texttt{src/binarise.py})}
+
+\textbf{\texttt{binarise\_sauvola(img, window\_size=25)}:} Converts the image to grayscale, then calls scikit-image's \texttt{threshold\_sauvola()} with the specified window size. A binary mask is produced by comparing each pixel to its local Sauvola threshold. The binary image is inverted so that text pixels are dark and background is white, matching the convention expected by Tesseract and EasyOCR.
+
+\textbf{\texttt{binarise\_otsu(img)}:} Applies scikit-image's \texttt{threshold\_otsu()} to compute a global threshold from the full image histogram. This method is dispatched for paper manuscripts where the bimodal histogram assumption is valid.
+
+\textbf{\texttt{binarise\_adaptive(img)}:} Calls \texttt{cv2.adaptiveThreshold} with the \texttt{cv2.ADAPTIVE\_THRESH\_MEAN\_C} mode and a block size of 11. This fallback is used for mixed-quality inputs where Sauvola produces artefacts due to extreme local contrast variation.
+
+\textbf{\texttt{remove\_noise\_blobs(binary, min\_size=50)}:} Uses scikit-image's \texttt{remove\_small\_objects} to eliminate connected components with fewer than 50 pixels. Components this small correspond to dust, surface pitting, and scanning artefacts rather than character strokes.
+
+\textbf{Morphological closing:} After noise removal, \texttt{cv2.morphologyEx} with \texttt{cv2.MORPH\_CLOSE} and a $2 \times 2$ rectangular kernel reconnects broken character strokes. This post-processing step is essential for weathered stone inscriptions where centuries of erosion have separated strokes that were once continuous.
+
+\textbf{\texttt{binarise(img\_path, output\_path, method="sauvola")}:} The main entry point dispatches to the appropriate thresholding function, applies noise removal and morphological closing, and saves the result as a lossless PNG file.
+
+\section{Stage 4 --- OCR and Transcription (\texttt{src/ocr.py})}
+
+\subsection{Tesseract Integration}
+
+Tesseract is invoked through the \texttt{pytesseract} Python wrapper. The configuration string \texttt{--oem 1 --psm 6} selects the LSTM recognition engine and assumes the image contains a uniform block of text. For each supported script, the correct Tesseract language file is specified: \texttt{tam} for Tamil, \texttt{san} for Sanskrit, \texttt{kan} for Kannada, \texttt{tel} for Telugu, \texttt{mal} for Malayalam, and \texttt{hin} for Devanagari. \texttt{pytesseract.image\_to\_data()} returns a pandas DataFrame with per-word text, confidence scores, and bounding box coordinates, which is parsed into a normalised list of word records.
+
+\subsection{EasyOCR Integration}
+
+An \texttt{easyocr.Reader} object is initialised with the target language code list (for example, \texttt{['ta']} for Tamil) and GPU enabled where available. \texttt{reader.readtext(image, detail=1)} returns a list of \texttt{(bounding\_box, text, confidence)} tuples covering all detected text regions. For Sanskrit and Brahmi, which have no dedicated EasyOCR model, the Hindi Devanagari code \texttt{'hi'} is used as a fallback, which correctly handles the Devanagari Unicode block.
+
+\subsection{Ensemble Merging and Confidence Classification}
+
+Both engines process the same binarised image independently. Their word-level outputs are spatially aligned by matching bounding box centres within a tolerance of 10 pixels. For each matched region, the merged confidence is computed as:
+
+\begin{equation}
+\label{eqn:conf_merge}
+C_{\text{merged}} = \max(C_{\text{Tesseract}},\; C_{\text{EasyOCR}})
+\end{equation}
+
+The text string associated with the higher-confidence prediction is used as the merged output. Unmatched regions (detected by one engine only) are included with their single-engine confidence score, ensuring maximum recall. Merged results are then classified into the three confidence bands (verified, review-needed, uncertain) and serialised as the transcription JSON object.
+
+\subsection{Transcription Output Schema}
+
+The transcription JSON object contains: \texttt{script} (string), \texttt{text} (full Unicode concatenation), \texttt{lines} (list of per-line objects each with \texttt{line\_number}, \texttt{text}, \texttt{confidence}, \texttt{bounding\_box}, and \texttt{uncertain} flag), \texttt{overall\_confidence} (mean across all merged words), \texttt{engine\_used} (set to \texttt{"tesseract+easyocr ensemble"}), and \texttt{uncertain\_regions} (list of bounding boxes for all words with confidence below 0.60).
+
+\section{Stage 6 --- Record Assembly and Export (\texttt{src/record.py})}
+
+\textbf{Record ID generation:} The \texttt{generate\_record\_id()} function reads the current highest record ID from the TinyDB store, increments the numeric suffix, and formats the new ID as \texttt{INS-\{YYYY\}-\{NNNN\}} using the current year.
+
+\textbf{\texttt{assemble\_record(metadata, image\_paths, transcription, processing\_log)}:} Builds the full record dictionary by combining the artefact metadata form data submitted by the user, the image path dictionary (original, enhanced, binarised, thumbnail), the transcription JSON from Stage 4, and the stage-by-stage processing log. The record is persisted to the TinyDB JSON file store and returned.
+
+\textbf{\texttt{export\_pdf(record\_id)}:} Retrieves the specified record from the store and generates a multi-page PDF using \texttt{fpdf2}:
+\begin{itemize}
+    \item \textbf{Page 1:} Side-by-side original versus enhanced image comparison with page heading and record ID.
+    \item \textbf{Page 2:} Full transcription text with uncertain regions visually annotated.
+    \item \textbf{Page 3:} Metadata table (artefact type, material, estimated period, dynasty, location, dimensions, condition, accession number).
+    \item \textbf{Page 4:} Citation block (suggested academic citation string, DOI placeholder, CC BY 4.0 licence declaration).
+\end{itemize}
+
+\section{Pipeline Orchestration (\texttt{src/pipeline.py})}
+
+The orchestrator function \texttt{run\_pipeline(image\_path, artefact\_type, script, metadata)} chains all implemented stages in sequence. Before invoking each stage, it verifies that the input file exists. After each stage completes, it appends an entry to the processing log recording the stage name, elapsed time in seconds, and success or error status. Quality metrics are computed automatically after Stage 2 enhancement by calling \texttt{src/metrics.py} functions (\texttt{compute\_psnr}, \texttt{compute\_ssim}, \texttt{compute\_cnr}, \texttt{compute\_sharpness}), and the metric values are written into the processing log alongside stage timing. The function returns the completed record dictionary and the path to the saved JSON file, providing a single call interface for both the batch command-line runner and the FastAPI background thread.
+
+\section{Web Backend (\texttt{api/})}
+
+\subsection{FastAPI Application (\texttt{api/main.py})}
+
+The FastAPI application defines three route handlers and one static file mount:
+
+\textbf{\texttt{GET /api/images}:} Scans the \texttt{data/raw/} directory and returns a JSON list of filenames for all supported image files. This powers the Browse tab's image gallery in the frontend.
+
+\textbf{\texttt{POST /api/process}:} Accepts a multipart form body containing one or more image files and a JSON metadata object. Each uploaded file is saved to \texttt{data/raw/} with its original filename. A UUID job ID is generated and stored in the job store with status \texttt{"queued"}. A Python \texttt{threading.Thread} is launched to call \texttt{run\_pipeline()} for each image, updating the job store with progress and results. The endpoint returns the job ID immediately so the client can begin polling.
+
+\textbf{\texttt{GET /api/jobs/\{id\}}:} Looks up the job in the job store and returns the current status, progress percentage (0--100), per-stage results accumulated so far, and the completed record when status is \texttt{"complete"}.
+
+\textbf{Static files:} \texttt{StaticFiles} middleware is mounted at \texttt{/data} to serve enhanced and binarised images directly to the browser for the comparison slider and record viewer.
+
+\subsection{Job Store (\texttt{api/jobs.py})}
+
+The job store is a module-level dictionary protected by a \texttt{threading.Lock}. Each entry maps a string UUID to a job state dictionary containing status, progress, result data, and error message (if any). All reads and writes to the dictionary are performed inside a \texttt{with lock} context, making the store safe for concurrent access from multiple pipeline threads.
+
+\section{Web Frontend (\texttt{web/src/})}
+
+\subsection{Component Architecture}
+
+The React 19 single-page application is structured around six components:
+
+\begin{itemize}
+    \item \textbf{\texttt{ImageGrid} and \texttt{ImageCard}:} Display all images from \texttt{GET /api/images} as a responsive thumbnail grid. Each card shows the filename and an artefact type badge.
+    \item \textbf{\texttt{StagePanel}:} A collapsible panel showing per-stage processing status, elapsed time, and quality metric values for the active job.
+    \item \textbf{\texttt{ResultViewer}:} Displays the completed record's enhanced image alongside the transcription text, with uncertain words highlighted.
+    \item \textbf{\texttt{ComparisonSlider}:} A CSS clip-path-based drag handle that reveals the original image beneath the enhanced image. The slider position is controlled by pointer and touch events, enabling qualitative before/after evaluation without switching between pages.
+    \item \textbf{\texttt{ProgressBar}:} An animated progress bar that reflects the job progress percentage returned by \texttt{GET /api/jobs/\{id\}}.
+\end{itemize}
+
+\subsection{Data Fetching Hooks}
+
+\textbf{\texttt{useImages}:} A TanStack Query \texttt{useQuery} hook that fetches the image list with automatic caching, background refetching on window focus, and error boundary handling.
+
+\textbf{\texttt{useJob(jobId)}:} A polling hook implemented with \texttt{useQuery} and a \texttt{refetchInterval} of 2000 milliseconds while job status is neither \texttt{"complete"} nor \texttt{"error"}. When the terminal status is reached, the interval is set to \texttt{false} to stop polling automatically.
+
+\subsection{Tab Navigation and Phase 1 Guards}
+
+The five UI tabs (Process, Browse, View Record, Export, Translation) are implemented as conditional renders controlled by a \texttt{useState} tab index. The Translation tab renders a disabled overlay with an explanatory message in Phase 1, preventing accidental use before the translation stage is implemented. This overlay is removed by a single conditional flag when Phase 2 is deployed.
+
+\section{Testing and Validation}
+
+\subsection{Unit Tests}
+
+\textbf{\texttt{tests/test\_preprocess.py}} contains four unit tests verifying: (1) CLAHE produces a histogram with a wider range than the original; (2) white balance reduces the maximum per-channel mean deviation; (3) border cropping removes rows and columns below the threshold; and (4) EXIF orientation is resolved so the output image dimensions match the visually correct orientation.
+
+\textbf{\texttt{tests/test\_api.py}} contains eleven tests using FastAPI's \texttt{TestClient}: image listing returns a non-empty list, job submission returns a valid UUID, polling returns a status field, invalid file types are rejected with HTTP 422, static image files are served with the correct content type, and concurrent job submissions do not corrupt the job store.
+
+\subsection{Integration Tests}
+
+\texttt{tests/test\_enhance.py} processes a known test image through the full Stage 1--2 chain and asserts that the PSNR of the enhanced output exceeds 30 dB relative to the original. \texttt{tests/test\_ocr.py} runs the Stage 3--4 chain on a clean Tamil character image and asserts that the transcription JSON contains a non-empty \texttt{text} field with at least one line entry.
+
+\subsection{Continuous Integration}
+
+A GitHub Actions workflow runs on every push to the \texttt{develop} and \texttt{main} branches. The workflow executes Python type checking with \texttt{mypy} across all source modules, then runs the full pytest suite (15 tests). Merge to \texttt{main} is blocked if any test fails or if type checking raises an error. This prevents stage regressions from propagating to the stable branch.
+
+\section{Summary}
+
+The Phase 1 implementation translates the Chapter 3 design into a tested, version-controlled system covering all five artefact categories across six pipeline stages, a REST API, and a React frontend. The preprocessing module establishes a reliable quality baseline through CLAHE, white balance, and EXIF correction. The enhancement module applies Real-ESRGAN super-resolution and DStretch colour decorrelation along artefact-specific chains. The binarisation module provides Sauvola adaptive thresholding as the primary method with morphological refinement. The OCR module runs a Tesseract and EasyOCR ensemble with confidence-classified output. The record assembly module produces structured, citable JSON and PDF exports. A FastAPI backend manages asynchronous job execution, while the React frontend provides an accessible interface for non-technical users. Continuous integration and a 15-test suite validate all components. Chapter 5 now evaluates the quality and performance of these outputs through objective image quality metrics and OCR performance measurements.
