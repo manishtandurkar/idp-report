@@ -1,10 +1,10 @@
 \chapter{Project Folder Structure and Code Excerpts}
 
-This appendix provides the complete project folder structure for the Inscription and Manuscript Digitisation system, followed by illustrative code excerpts from the two most technically significant pipeline modules: the preprocessing stage and the OCR ensemble stage.
+This appendix provides the complete project folder structure for the Inscription and Manuscript Digitisation system, followed by illustrative code excerpts from the two most technically significant Phase~1 pipeline modules: the preprocessing stage and the binarisation stage.
 
 \section{Project Folder Structure}
 
-The repository is organised into source code, API, frontend, data directories, model weights, documentation deliverables, tests, and outputs. The structure below reflects the Phase 1 implementation.
+The repository is organised into source code, data directories, model weights, documentation deliverables, tests, and outputs. The structure below reflects the Phase~1 implementation.
 
 \begin{tcblisting}{listing only, colback=gray!10!white, breakable, boxsep=0pt,
 top=1mm, bottom=1mm, left=1mm, right=1mm,
@@ -22,41 +22,15 @@ inscription-digitisation/
 |-- data/
 |   |-- raw/                     <- original scans (read-only)
 |   |-- enhanced/                <- Stage 2 output
-|   |-- binarised/               <- Stage 3 output
-|   |-- transcriptions/          <- Stage 4 JSON output
-|   |-- translations/            <- Stage 5 output (Phase 2)
-|   `-- records/                 <- final assembled JSON records
+|   `-- binarised/               <- Stage 3 output
 |-- models/
 |   `-- weights/
 |       |-- RealESRGAN_x4plus.pth
 |       `-- RealESRGAN_x4plus_anime_6B.pth
-|-- api/                         <- FastAPI backend
-|   |-- main.py                  <- /api/images, /api/process, /api/jobs/{id}
-|   |-- jobs.py                  <- thread-safe in-memory job store
-|   `-- pipeline.py              <- adapter calling src/pipeline.py
-|-- web/                         <- React + Vite frontend
-|   `-- src/
-|       |-- App.tsx
-|       |-- types.ts
-|       |-- api/client.ts
-|       |-- hooks/
-|       |   |-- useImages.ts
-|       |   `-- useJob.ts
-|       `-- components/
-|           |-- ImageGrid.tsx
-|           |-- ImageCard.tsx
-|           |-- StagePanel.tsx
-|           |-- ResultViewer.tsx
-|           |-- ComparisonSlider.tsx
-|           `-- ProgressBar.tsx
 |-- src/
 |   |-- preprocess.py            <- Stage 1: normalise, balance, crop
 |   |-- enhance.py               <- Stage 2: Real-ESRGAN, DStretch
 |   |-- binarise.py              <- Stage 3: Sauvola, Otsu, morphology
-|   |-- ocr.py                   <- Stage 4: Tesseract + EasyOCR ensemble
-|   |-- translate.py             <- Stage 5: Phase 2 (not yet active)
-|   |-- record.py                <- Stage 6: JSON assembly, PDF export
-|   |-- pipeline.py              <- orchestrator: chains Stages 1-4, 6
 |   |-- filters.py               <- ECE: Gabor, FFT, directional filters
 |   |-- analysis.py              <- ECE: colour distribution tools
 |   |-- metrics.py               <- ECE: PSNR, SSIM, CNR, sharpness
@@ -67,14 +41,11 @@ inscription-digitisation/
 |   |-- workflow_analysis.pdf         <- IEM deliverable
 |   |-- cost_benefit_analysis.pdf     <- IEM deliverable
 |   |-- user_guide.pdf                <- IEM deliverable
-|   `-- impact_statement.pdf          <- IEM deliverable
+|   `-- impact_statement.pdf         <- IEM deliverable
 |-- tests/
 |   |-- test_preprocess.py       <- 4 unit tests
-|   |-- test_api.py              <- 11 integration tests
-|   |-- test_enhance.py
-|   `-- test_ocr.py
+|   `-- test_enhance.py          <- 1 integration test
 `-- outputs/
-    |-- exports/                 <- PDF exports
     `-- logs/                    <- processing logs
 \end{tcblisting}
 
@@ -134,9 +105,9 @@ def preprocess(img_path: str, output_path: str) -> None:
     cv2.imwrite(output_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
 \end{tcblisting}
 
-\section{Stage 4 --- OCR Ensemble (\texttt{src/ocr.py})}
+\section{Stage 3 --- Binarisation Module (\texttt{src/binarise.py})}
 
-The following excerpt shows the ensemble merging logic that combines Tesseract and EasyOCR outputs by maximum confidence score.
+The following excerpt shows the Sauvola adaptive thresholding function and the main binarisation entry point, including morphological post-processing.
 
 \begin{tcblisting}{listing only, colback=gray!10!white, breakable, boxsep=0pt,
 top=1mm, bottom=1mm, left=1mm, right=1mm,
@@ -149,82 +120,46 @@ listing options={
   backgroundcolor=\color{gray!25},
   showstringspaces=false
 }}
-import pytesseract
-import easyocr
+import cv2
 import numpy as np
-from typing import List, Dict, Any
+from skimage.filters import threshold_sauvola, threshold_otsu
+from skimage.morphology import remove_small_objects
 
-CONFIDENCE_VERIFIED   = 0.85
-CONFIDENCE_REVIEW     = 0.60
+def binarise_sauvola(img: np.ndarray,
+                     window_size: int = 25) -> np.ndarray:
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    thresh = threshold_sauvola(gray, window_size=window_size)
+    binary = (gray < thresh).astype(np.uint8) * 255
+    return binary
 
-def run_tesseract(img: np.ndarray, lang: str) -> List[Dict]:
-    cfg = "--oem 1 --psm 6"
-    data = pytesseract.image_to_data(
-        img, lang=lang, config=cfg,
-        output_type=pytesseract.Output.DICT
-    )
-    words = []
-    for i, text in enumerate(data["text"]):
-        if text.strip() and data["conf"][i] >= 0:
-            words.append({
-                "text": text,
-                "confidence": data["conf"][i] / 100.0,
-                "bbox": [data["left"][i], data["top"][i],
-                         data["width"][i], data["height"][i]]
-            })
-    return words
+def binarise_otsu(img: np.ndarray) -> np.ndarray:
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    thresh = threshold_otsu(gray)
+    binary = (gray < thresh).astype(np.uint8) * 255
+    return binary
 
-def run_easyocr(img: np.ndarray, lang_code: str) -> List[Dict]:
-    reader = easyocr.Reader([lang_code], gpu=True)
-    results = reader.readtext(img, detail=1)
-    return [{"text": r[1], "confidence": r[2], "bbox": r[0]}
-            for r in results]
+def remove_noise_blobs(binary: np.ndarray,
+                       min_size: int = 50) -> np.ndarray:
+    bool_mask = binary.astype(bool)
+    cleaned = remove_small_objects(bool_mask, min_size=min_size)
+    return cleaned.astype(np.uint8) * 255
 
-def merge_results(tess: List[Dict],
-                  easy: List[Dict]) -> List[Dict]:
-    merged = list(tess)
-    for e_word in easy:
-        ex, ey = e_word["bbox"][0], e_word["bbox"][1]
-        best_match = None
-        best_dist  = 20          # pixel tolerance
-        for t_word in tess:
-            tx, ty = t_word["bbox"][0], t_word["bbox"][1]
-            dist = ((ex - tx)**2 + (ey - ty)**2) ** 0.5
-            if dist < best_dist:
-                best_dist  = dist
-                best_match = t_word
-        if best_match is not None:
-            if e_word["confidence"] > best_match["confidence"]:
-                best_match.update(e_word)
-        else:
-            merged.append(e_word)
-    return merged
-
-def classify_confidence(conf: float) -> str:
-    if conf >= CONFIDENCE_VERIFIED:
-        return "verified"
-    if conf >= CONFIDENCE_REVIEW:
-        return "review_needed"
-    return "uncertain"
-
-def transcribe(img: np.ndarray,
-               script: str,
-               tess_lang: str,
-               easy_lang: str) -> Dict[str, Any]:
-    tess_words = run_tesseract(img, tess_lang)
-    easy_words = run_easyocr(img, easy_lang)
-    merged     = merge_results(tess_words, easy_words)
-    for w in merged:
-        w["status"] = classify_confidence(w["confidence"])
-    overall_conf = (sum(w["confidence"] for w in merged) / len(merged)
-                    if merged else 0.0)
-    return {
-        "script":             script,
-        "text":               " ".join(w["text"] for w in merged),
-        "lines":              merged,
-        "overall_confidence": overall_conf,
-        "engine_used":        "tesseract+easyocr ensemble",
-        "uncertain_regions":  [w["bbox"] for w in merged
-                               if w["status"] == "uncertain"]
-    }
+def binarise(img_path: str,
+             output_path: str,
+             method: str = "sauvola") -> None:
+    img = cv2.imread(img_path)
+    if method == "sauvola":
+        binary = binarise_sauvola(img)
+    elif method == "otsu":
+        binary = binarise_otsu(img)
+    else:
+        binary = cv2.adaptiveThreshold(
+            cv2.cvtColor(img, cv2.COLOR_BGR2GRAY),
+            255, cv2.ADAPTIVE_THRESH_MEAN_C,
+            cv2.THRESH_BINARY, 11, 2
+        )
+    binary = remove_noise_blobs(binary)
+    kernel = np.ones((2, 2), np.uint8)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+    cv2.imwrite(output_path, binary)
 \end{tcblisting}

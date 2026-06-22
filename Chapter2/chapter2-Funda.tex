@@ -27,7 +27,7 @@ Palm leaves (typically from palmyra or coconut palms) constitute South Asia's ol
 	\item \textbf{Yellowing and lignin browning:} Cellulose oxidation darkens the substrate uniformly over 10–15 centuries, reducing contrast with ink.
 	\item \textbf{Ink fading:} Carbon-based inks used in classical South Asia were not chemically stable; many fade to grey or nearly invisible states.
 	\item \textbf{Fibre brittleness:} The leaf dries and becomes fragile; handling causes edge splitting and surface layer loss.
-	\item \textbf{Uneven surface:} Leaf fibre structure creates a non-uniform, textured background that interferes with OCR.
+	\item \textbf{Uneven surface:} Leaf fibre structure creates a non-uniform, textured background that interferes with binarisation and character separation.
 \end{itemize}
 
 Palm leaf restoration relies on aggressive contrast stretching and binarisation (Section \ref{sec:binarisation}) to separate faded ink from yellowed substrate.
@@ -55,7 +55,7 @@ European and early-modern Indian paper manuscripts experience:
 	\item \textbf{Moisture damage:} Water exposure causes swelling, warping, and mould growth.
 \end{itemize}
 
-Paper restoration employs inpainting techniques (planned for Phase 2) to remove tears and stains before OCR.
+Paper restoration employs inpainting techniques (planned for Phase 2) to remove tears and stains before binarisation and downstream processing.
 
 \subsection{Cave and Rock Paintings}
 
@@ -145,7 +145,7 @@ The effect is to \emph{decorrelate} colour channels—removing redundancy and am
 
 \subsection{Image Binarisation}\label{sec:binarisation}
 
-Binarisation converts a grayscale or colour image to binary (black and white), essential for OCR. The simplest method is a global threshold: pixels $I(x,y) > T$ become white; others black. However, global thresholds fail on unevenly lit images.
+Binarisation converts a grayscale or colour image to binary (black and white), producing a clean text-background separation that is the final output of Phase~1 and the prerequisite input for downstream character recognition in Phase~2. The simplest method is a global threshold: pixels $I(x,y) > T$ become white; others black. However, global thresholds fail on unevenly lit images.
 
 \textbf{Otsu's method} selects threshold $T^*$ to maximise between-class variance:
 \begin{equation}
@@ -166,57 +166,6 @@ Post-binarisation, morphological operations refine the result:
 	\item \textbf{Closing} ($\text{dilation} \circ \text{erosion}$): Reconnects broken character strokes.
 	\item \textbf{Opening} ($\text{erosion} \circ \text{dilation}$): Removes small noise and dust specks.
 \end{itemize}
-
-\section{Optical Character Recognition (OCR)}
-
-OCR is the bottleneck of the pipeline: converting pixel patterns to Unicode text. Two engines are deployed: Tesseract (classical HMM-based) and EasyOCR (deep learning).
-
-\subsection{Tesseract OCR Architecture}
-
-Tesseract uses a two-layer approach:
-
-\begin{enumerate}
-	\item \textbf{Layout analysis:} Segments the image into regions (paragraphs, columns, lines). The Leptonica library handles this preprocessing.
-	\item \textbf{Character recognition:} An LSTM recurrent neural network (in OCR engine mode 1, OEM=1) trained on character sequences predicts Unicode output.
-\end{enumerate}
-
-Configuration critical to Indic scripts:
-\begin{itemize}
-	\item \texttt{--oem 1}: LSTM engine (not legacy Tesseract pattern matching).
-	\item \texttt{--psm 6}: Assume uniform block of text (no column detection necessary).
-	\item Language: Tesseract supports Tamil, Sanskrit, Kannada, Telugu, Malayalam via trained data files (e.g., \texttt{tam.traineddata}).
-\end{itemize}
-
-Tesseract's strength: well-engineered for Indic scripts and robust to image rotation and skew. Weakness: provides only per-word confidence scores; sensitive to image quality.
-
-\subsection{EasyOCR}
-
-EasyOCR wraps PyTorch deep learning models trained on synthetic and real scene text. It provides:
-
-\begin{itemize}
-	\item \textbf{Per-character confidence scores}: Fine-grained accuracy assessment.
-	\item \textbf{Bounding boxes}: Spatial localisation of each character.
-	\item \textbf{GPU acceleration}: Processes multiple scripts in a single forward pass.
-\end{itemize}
-
-For Indic scripts, EasyOCR falls back to adjacent language models (e.g., Hindi Devanagari for Sanskrit when no dedicated Sanskrit model exists). It excels on degraded, skewed, or curved text.
-
-\subsection{Confidence Thresholds and Ensemble Merging}
-
-Both engines run independently, producing overlapping character sequences and confidence scores. Results are merged by alignment:
-
-\begin{equation}
-\text{Confidence}_{\text{merged}} = \max(\text{Conf}_{\text{Tesseract}}, \text{Conf}_{\text{EasyOCR}})
-\end{equation}
-
-Thresholds are applied:
-\begin{itemize}
-	\item $\text{Confidence} \geq 0.85$: \textbf{Verified} (no manual review needed)
-	\item $0.60 \leq \text{Confidence} < 0.85$: \textbf{Review needed} (human should check)
-	\item $\text{Confidence} < 0.60$: \textbf{Uncertain} (flagged red in output)
-\end{itemize}
-
-This ensemble approach improves recall (finding all text) by 8–12\% compared to either engine alone, critical for heritage digitisation where missing a portion of an ancient text is a data loss.
 
 \section{Signal Processing and Filter Design}
 
@@ -270,21 +219,21 @@ SSIM corrects for PSNR's limitations by measuring structural rather than per-pix
 
 where $\mu$ are means, $\sigma$ are standard deviations, $\sigma_{I\hat{I}}$ is covariance, and $C_1, C_2$ are stabilisation constants. SSIM ranges in $[0, 1]$ with 1 meaning identical images.
 
-\textbf{Target:} SSIM $\geq 0.85$ indicates good preservation of text edges and structure, important for OCR performance.
+\textbf{Target:} SSIM $\geq 0.85$ indicates good preservation of text edges and structure, confirming that enhancement improves rather than distorts the original content.
 
 \subsection{Contrast-to-Noise Ratio (CNR)}
 
-For text recognition, local contrast between text and background matters more than absolute intensity. Given a binary text mask $M$:
+For binarisation quality, local contrast between text and background matters more than absolute intensity. Given a binary text mask $M$:
 
 \begin{equation}
 \text{CNR} = \frac{|\mu_{\text{text}} - \mu_{\text{background}}|}{\sigma_{\text{background}}}
 \end{equation}
 
-Higher CNR indicates easier OCR. CNR correlates better with character recognition accuracy than PSNR.
+Higher CNR indicates better text-background separability, which directly improves binarisation quality and readiness for downstream processing.
 
 \subsection{Edge Sharpness (Laplacian Variance)}
 
-OCR relies on sharp character edges. Sharpness can be estimated via Laplacian variance:
+Sharp character edges are essential for reliable binarisation and downstream processing. Sharpness can be estimated via Laplacian variance:
 
 \begin{equation}
 \text{Sharpness} = \text{Var}(\nabla^2 I)
@@ -294,11 +243,11 @@ where $\nabla^2 I$ is the Laplacian (second derivative). High Laplacian variance
 
 \section{Supporting Tools and Software Stack}
 
-The implementation leverages established libraries and frameworks, each selected for robustness and compatibility with Indic text processing.
+The implementation leverages established libraries and frameworks, each selected for robustness and compatibility with the image processing requirements of heritage digitisation.
 
 \subsection{Image Processing Libraries}
 
-\textbf{OpenCV (4.9.0.80):} Industry-standard library providing CLAHE, morphological operations, image transformations, and access to Tesseract. Highly optimised C++ backend.
+\textbf{OpenCV (4.9.0.80):} Industry-standard library providing CLAHE, morphological operations, image transformations, and colour space conversions. Highly optimised C++ backend.
 
 \textbf{Pillow (10.3.0):} Pure Python imaging library with robust EXIF handling, critical for preserving image orientation metadata through the pipeline.
 
@@ -306,27 +255,13 @@ The implementation leverages established libraries and frameworks, each selected
 
 \subsection{Deep Learning and AI Frameworks}
 
-\textbf{PyTorch ($\geq$ 2.0.0):} Deep learning framework underpinning Real-ESRGAN and foundational for Phase 2 translation models.
+\textbf{PyTorch ($\geq$ 2.0.0):} Deep learning framework underpinning Real-ESRGAN super-resolution inference.
 
-\textbf{BasicSR (0.3.0, 1.4.2):} Official Real-ESRGAN implementation, providing pre-trained model weights and inference pipelines.
+\textbf{BasicSR (0.3.0, 1.4.2):} Official Real-ESRGAN implementation, providing pre-trained model weights and the \texttt{RealESRGANer} inference wrapper.
 
-\textbf{EasyOCR (1.7.1):} Unified Python interface for PyTorch-based OCR across 80+ languages and scripts.
-
-\subsection{Indic Text Processing}
-
-\textbf{indic-transliteration (2.3.57):} Library providing transliteration between Indic scripts (Tamil $\leftrightarrow$ Sanskrit, etc.) and Latin romanisation. Essential for Phase 2 translation and multilingual output.
-
-\subsection{Web Framework and Frontend}
-
-\textbf{FastAPI (0.111.0):} Modern asynchronous Python web framework with automatic API documentation and low latency—critical for real-time image processing feedback.
-
-\textbf{React 19 \& Vite 6:} Modern JavaScript framework and bundler enabling interactive image comparison sliders and responsive UI.
-
-\textbf{TanStack Query v5:} Advanced data fetching library for managing async job status polling without manual state complexity.
-
-\textbf{Tailwind CSS v4:} Utility-first CSS framework ensuring consistent, professional UI styling.
+\textbf{NumPy (1.26.4):} Numerical array library used throughout for pixel-level operations, DStretch eigendecomposition, and metric computation.
 
 \section{Summary}
 
-This chapter has established the theoretical foundation for heritage digitisation by examining artefact degradation mechanisms, image processing mathematics, and signal processing techniques underlying the pipeline. The five artefact categories—stone inscriptions, palm leaf manuscripts, copper plates, paper, and rock art—each exhibit distinct degradation modes requiring tailored enhancement strategies. Image processing fundamentals, from colour space representation to adaptive binarisation, provide the mathematical framework for Stage 1–3 processing. OCR theory and ensemble methods address the critical transition from images to searchable Unicode text. Quality metrics (PSNR, SSIM, CNR, sharpness) provide objective validation that enhancement actually improves inscriptions rather than merely applying visual filters. The supporting software stack—OpenCV, PyTorch, EasyOCR, and Indic transliteration tools—bridges theory to implementation. With this foundation, Chapter 3 proceeds to the system architecture and design decisions that orchestrate these components into a coherent end-to-end pipeline.
+This chapter has established the theoretical foundation for heritage digitisation by examining artefact degradation mechanisms, image processing mathematics, and signal processing techniques underlying the pipeline. The five artefact categories---stone inscriptions, palm leaf manuscripts, copper plates, paper, and rock art---each exhibit distinct degradation modes requiring tailored enhancement strategies. Image processing fundamentals, from colour space representation to adaptive binarisation, provide the mathematical framework for Stage~1--3 processing. Quality metrics (PSNR, SSIM, CNR, sharpness) provide objective validation that enhancement genuinely improves inscriptions rather than merely applying visual filters. The supporting software stack---OpenCV, PyTorch, BasicSR, and scikit-image---bridges theory to implementation. With this foundation, Chapter~3 proceeds to the system architecture and design decisions that orchestrate these components into a coherent three-stage pipeline.
 
