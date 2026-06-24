@@ -144,6 +144,8 @@ Table 5.2 outlines these statistical parameters before and after applying the CL
 \fontsize{10}{12}\selectfont
 \caption{Colour channel statistical parameters before and after preprocessing normalisation}
 \label{tab:channel_stats}
+\setlength{\tabcolsep}{3.5pt}
+\makebox[\textwidth][c]{%
 \begin{tabular}{|l|c|c|c|c|c|c|c|c|}
 	\hline
 	& \multicolumn{4}{c|}{\textbf{Raw Image Scan}} & \multicolumn{4}{c|}{\textbf{Preprocessed Output}} \\
@@ -160,7 +162,8 @@ Table 5.2 outlines these statistical parameters before and after applying the CL
 	Copper Plate (G) & 112.4 & 38.6 & 0.82 & -0.12 & 155.8 & 47.9 & 0.03 & -0.22 \\ \hline
 	Copper Plate (B) & 82.5 & 25.4 & 1.15 & 0.28 & 155.1 & 48.5 & 0.01 & -0.18 \\
 	\hline
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 The statistics in Table 5.2 reveal that raw scans possess significant asymmetry. Stone inscriptions exhibit high positive skewness ($S > 1.2$), indicating dark regions with minor highlights. Paper manuscripts display negative skewness ($S < -0.8$) due to highly reflective backgrounds. Post-preprocessing, all channel skewness values converge close to zero ($|S| < 0.25$), proving that LAB-space CLAHE and white-balancing effectively correct exposure imbalances.

@@ -274,6 +274,7 @@
 %} % Use \thenumtitlelines to know the count value
 
 %%%%%% Title Page %%%%%%%%%%%
+\definecolor{coversheetgreen}{RGB}{170,211,177}
 \renewcommand*{\maketitle}{%
 \begin{titlepage}
 %Added in Ver 3.6 [13/08/2023]
@@ -285,6 +286,9 @@
   {\Large\bfseries Submitted by,\unskip\strut\par}
  \end{center}
 \else
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[coversheetgreen] (current page.south west) rectangle (current page.north east);
+\end{tikzpicture}
 \begin{tikzpicture}[remember picture, overlay]
   \draw[line width = 4pt] ($(current page.north west) + (0.75in,-0.75in)$) rectangle ($(current page.south east) + (-0.75in,0.75in)$);
 \end{tikzpicture}
@@ -301,7 +305,7 @@
 
 \begin{center}
 \vspace{-1cm}
-{\includegraphics[width=1\textwidth]{Figures/RV_newLogo}\par}
+{\includegraphics[width=1\textwidth]{Figures/RV_newLogo_transparent}\par}
 \vspace{1cm}
 %\ifINT{\Large\itshape Summer Internship Report\par on\par}\fi %Intern
 {\huge\bfseries\@title\unskip\strut\par \global\titlelines=\the\prevgraf}% To count the number of lines used in the title - to adjust the spacing of title page
