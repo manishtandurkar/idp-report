@@ -1,60 +1,213 @@
-%\newglossaryentry{length}{name=$l$, description={Diffusion length}}
-%\gls{length}
+% ============================================================
+% Glossaries.tex — Abbreviations and Symbols for IDP Report
+% "Digitisation of Historical Inscriptions and Manuscripts"
+% ============================================================
 
-\newglossaryentry{rc}{name=$\tau$, description={Time constant}, type=symbolList}
-\newglossaryentry{wavelength}{name=$\lambda$, description={Wavelength of a light in a medium}, type=symbolList}
-\newglossaryentry{c}{name=$c$, description={Speed of light}, type=symbolList}
-\newglossaryentry{freq}{name=$f$, description={Frequncy of light in a medium}, type=symbolList}
+% ============================================================
+% SECTION 1: ABBREVIATIONS (Acronyms)
+% ============================================================
 
 %A
-\newacronym{ade}{ADE}{Analog Design Environment}
+\newacronym{ai}{AI}{Artificial Intelligence}
+\newacronym{api}{API}{Application Programming Interface}
+\newacronym{awb}{AWB}{Auto White Balance}
+\newacronym{aws}{AWS}{Amazon Web Services}
+
 %B
+\newacronym{bgr}{BGR}{Blue-Green-Red (OpenCV channel order)}
 
 %C
-\newacronym{cad}{CAD}{Computer Aided Design}
-\newacronym{cpa}{CPA}{Carry-Propagate Adder}
-\newacronym{cs}{CS}{Common Source}
-\newacronym{csa}{CSA}{Carry-Save Adder}
-\newacronym{ciw}{CIW}{Command Interpreter Window}
+\newacronym{capex}{CapEx}{Capital Expenditure}
+\newacronym{cdf}{CDF}{Cumulative Distribution Function}
+\newacronym{cielab}{CIELAB}{Commission Internationale de l'\'Eclairage LAB colour space}
+\newacronym{clahe}{CLAHE}{Contrast-Limited Adaptive Histogram Equalisation}
+\newacronym{cnn}{CNN}{Convolutional Neural Network}
+\newacronym{cnr}{CNR}{Contrast-to-Noise Ratio}
+\newacronym{cpu}{CPU}{Central Processing Unit}
+
 %D
-\newacronym{drc}{DRC}{Design Rule Check}
+\newacronym{dl}{DL}{Deep Learning}
+\newacronym{dstretch}{DStretch}{Decorrelation Stretch}
+\newacronym{docentr}{DocEnTr}{Document Enhancement Transformer}
+
 %E
-\newacronym{erc}{ERC}{Electrical Rule Check}
+\newacronym{easyocr}{EasyOCR}{Easy Optical Character Recognition (deep-learning engine)}
+\newacronym{ece}{ECE}{Electronics and Communication Engineering}
+\newacronym{esrgan}{ESRGAN}{Enhanced Super-Resolution Generative Adversarial Network}
+\newacronym{exif}{EXIF}{Exchangeable Image File Format}
+
 %F
+\newacronym{fft}{FFT}{Fast Fourier Transform}
+\newacronym{fpdf}{fpdf2}{Free PDF generation library (Python)}
 
 %G
+\newacronym{gan}{GAN}{Generative Adversarial Network}
+\newacronym{gpu}{GPU}{Graphics Processing Unit}
 
 %H
+\newacronym{hdr}{HDR}{High Dynamic Range}
+\newacronym{hmm}{HMM}{Hidden Markov Model}
+\newacronym{hsv}{HSV}{Hue-Saturation-Value colour space}
+\newacronym{http}{HTTP}{Hypertext Transfer Protocol}
 
 %I
-\newacronym{ic}{IC}{Integrated Circuit}
+\newacronym{idp}{IDP}{Interdisciplinary Project}
+
 %J
+\newacronym{jpeg}{JPEG}{Joint Photographic Experts Group}
+\newacronym{json}{JSON}{JavaScript Object Notation}
 
 %L
-\newacronym{lvs}{LVS}{Layout Versus Schematic}
-\newacronym{lsw}{LSW}{Layer Selection Window}
+\newacronym{lab}{LAB}{Lightness-$a^*$-$b^*$ perceptual colour space}
+\newacronym{lstm}{LSTM}{Long Short-Term Memory}
 
 %M
-\newacronym{mo}{M-O}{Metal-Oxide}
-\newacronym{mom}{M-O-M}{Metal-Oxide-Metal}
-\newacronym{mos}{M-O-S}{Metal-Oxide-Semiconductor}
-
+\newacronym{mb}{MB}{Megabyte}
+\newacronym{mse}{MSE}{Mean Squared Error}
 
 %N
+\newacronym{nlm}{NLM}{Non-Local Means}
+\newacronym{nlp}{NLP}{Natural Language Processing}
+\newacronym{numpy}{NumPy}{Numerical Python library}
+
 %O
-\newacronym{1d}{1D}{One-dimentional}
-\newacronym{os}{O-S}{Oxide-Semiconductor}
+\newacronym{ocr}{OCR}{Optical Character Recognition}
+\newacronym{opex}{OpEx}{Operational Expenditure}
+
 %P
-%Q
+\newacronym{pca}{PCA}{Principal Component Analysis}
+\newacronym{pdf}{PDF}{Portable Document Format}
+\newacronym{png}{PNG}{Portable Network Graphics}
+\newacronym{psm}{PSM}{Page Segmentation Mode (Tesseract parameter)}
+\newacronym{psnr}{PSNR}{Peak Signal-to-Noise Ratio}
+
 %R
+\newacronym{realesrgan}{Real-ESRGAN}{Real Enhanced Super-Resolution Generative Adversarial Network}
+\newacronym{rest}{REST}{Representational State Transfer}
+\newacronym{rgb}{RGB}{Red-Green-Blue}
+\newacronym{rrdb}{RRDB}{Residual-in-Residual Dense Block}
 
 %S
+\newacronym{s3}{S3}{Amazon Simple Storage Service}
+\newacronym{ssim}{SSIM}{Structural Similarity Index}
+\newacronym{svd}{SVD}{Singular Value Decomposition}
+
 %T
-\newacronym{3d}{3D}{Three-dimentional}
+\newacronym{tif}{TIF/TIFF}{Tagged Image File Format}
+\newacronym{toc}{TOC}{Table of Contents}
+
 %U
+\newacronym{unet}{U-Net}{U-shaped Convolutional Neural Network for image segmentation}
+\newacronym{ui}{UI}{User Interface}
+\newacronym{unicode}{Unicode}{Universal Character Encoding Standard}
+\newacronym{uv}{UV}{Ultraviolet}
+
 %V
-\newacronym{vtc}{VTC}{Voltage Transfer Characteristic}
-%W
-%X
-%Y
-%Z
+\newacronym{vit}{ViT}{Vision Transformer}
+\newacronym{vram}{VRAM}{Video Random Access Memory}
+
+% ============================================================
+% SECTION 2: SYMBOLS
+% NOTE: When name= value contains a comma, enclose in braces.
+% ============================================================
+
+% --- Image Dimensions ---
+\newglossaryentry{sym:N}{name={$N$}, description={Total number of pixels in a channel or image}, type=symbolList}
+\newglossaryentry{sym:H}{name={$H$}, description={Image height in pixels}, type=symbolList}
+\newglossaryentry{sym:W}{name={$W$}, description={Image width in pixels}, type=symbolList}
+\newglossaryentry{sym:Ixy}{name={$I(x{,}y)$}, description={Pixel intensity at spatial coordinate $(x,y)$}, type=symbolList}
+\newglossaryentry{sym:Mxy}{name={$M(x{,}y)$}, description={Binary mask value at spatial coordinate $(x,y)$}, type=symbolList}
+\newglossaryentry{sym:xi}{name={$x_i$}, description={Individual pixel intensity value for statistical computation}, type=symbolList}
+
+% --- CLAHE / Preprocessing ---
+\newglossaryentry{sym:Lstar}{name={$L^*$}, description={Luminance channel in CIELAB colour space, range $[0,100]$}, type=symbolList}
+\newglossaryentry{sym:astar}{name={$a^*$}, description={Red--green chromaticity axis in CIELAB, range $[-127,127]$}, type=symbolList}
+\newglossaryentry{sym:bstar}{name={$b^*$}, description={Yellow--blue chromaticity axis in CIELAB, range $[-127,127]$}, type=symbolList}
+\newglossaryentry{sym:Climit}{name={$C_{\text{limit}}$}, description={Clip limit for CLAHE histogram slope (default 2.0)}, type=symbolList}
+\newglossaryentry{sym:sk}{name={$s_k$}, description={Output intensity level after CLAHE CDF mapping}, type=symbolList}
+\newglossaryentry{sym:rk}{name={$r_k$}, description={Input intensity level in CLAHE histogram}, type=symbolList}
+
+% --- White Balance ---
+\newglossaryentry{sym:muRGB}{name={$\mu_R{,}\,\mu_G{,}\,\mu_B$}, description={Mean intensities of Red, Green, and Blue channels for white balance correction}, type=symbolList}
+\newglossaryentry{sym:muOverall}{name={$\mu_{\text{overall}}$}, description={Overall mean channel intensity for Grey-World white balance}, type=symbolList}
+\newglossaryentry{sym:Sc}{name={$S_c$}, description={Channel scale factor for Grey-World white balance correction}, type=symbolList}
+
+% --- Border Cropping ---
+\newglossaryentry{sym:tau}{name={$\tau$}, description={Border-detection intensity threshold (default $\tau = 10$)}, type=symbolList}
+\newglossaryentry{sym:Omega}{name={$\Omega$}, description={Bounding box coordinates $(x{,}y{,}w{,}h)$ of the detected text block}, type=symbolList}
+\newglossaryentry{sym:Mclosed}{name={$M_{\text{closed}}$}, description={Morphologically closed binary mask used in border cropping}, type=symbolList}
+
+% --- NLM Denoising ---
+\newglossaryentry{sym:h}{name={$h$}, description={Filter strength parameter in NLM denoising (default $h = 10$)}, type=symbolList}
+\newglossaryentry{sym:wpq}{name={$w(p{,}q)$}, description={Pixel similarity weight between patches at $p$ and $q$ in NLM denoising}, type=symbolList}
+\newglossaryentry{sym:Bp}{name={$B(p)$}, description={Local patch centred at pixel $p$ (size $7\times7$) in NLM denoising}, type=symbolList}
+\newglossaryentry{sym:Swindow}{name={$\mathcal{S}$}, description={Search window ($21\times21$) used during NLM denoising}, type=symbolList}
+\newglossaryentry{sym:Cp}{name={$C(p)$}, description={Normalisation factor for NLM weight sum at pixel $p$}, type=symbolList}
+
+% --- DStretch ---
+\newglossaryentry{sym:Sigma}{name={$\Sigma$}, description={Covariance matrix of colour channels in DStretch decorrelation}, type=symbolList}
+\newglossaryentry{sym:Lambda}{name={$\Lambda$}, description={Diagonal eigenvalue matrix from SVD of the covariance matrix}, type=symbolList}
+\newglossaryentry{sym:V}{name={$V$}, description={Eigenvector matrix from SVD of the covariance matrix}, type=symbolList}
+\newglossaryentry{sym:Y}{name={$Y$}, description={Decorrelated colour coordinate matrix output of DStretch}, type=symbolList}
+
+% --- Unsharp Masking ---
+\newglossaryentry{sym:alpha}{name={$\alpha$}, description={Unsharp masking boost factor (default $\alpha = 1.5$)}, type=symbolList}
+\newglossaryentry{sym:Gsigma}{name={$G_\sigma$}, description={Gaussian blur kernel with standard deviation $\sigma$}, type=symbolList}
+
+% --- Sauvola Binarisation ---
+\newglossaryentry{sym:Txy}{name={$T(x{,}y)$}, description={Adaptive local binarisation threshold at coordinate $(x,y)$}, type=symbolList}
+\newglossaryentry{sym:mxy}{name={$m(x{,}y)$}, description={Local mean intensity within the Sauvola sliding window}, type=symbolList}
+\newglossaryentry{sym:sxy}{name={$s(x{,}y)$}, description={Local standard deviation within the Sauvola sliding window}, type=symbolList}
+\newglossaryentry{sym:R}{name={$R$}, description={Dynamic range of standard deviation in Sauvola thresholding (default $R=128$)}, type=symbolList}
+\newglossaryentry{sym:k}{name={$k$}, description={Sauvola threshold aggressiveness parameter}, type=symbolList}
+\newglossaryentry{sym:Wbase}{name={$W_{\text{base}}$}, description={Base sliding window size for adaptive Sauvola thresholding}, type=symbolList}
+\newglossaryentry{sym:kbase}{name={$k_{\text{base}}$}, description={Base Sauvola $k$ value selected from global image statistics}, type=symbolList}
+\newglossaryentry{sym:Wcrop}{name={$W_{\text{crop}}$}, description={Dynamic Sauvola window for palm-leaf character crop binarisation}, type=symbolList}
+\newglossaryentry{sym:sigmaImg}{name={$\sigma$}, description={Standard deviation of the preprocessed image (used in parameter tuning)}, type=symbolList}
+\newglossaryentry{sym:muImg}{name={$\mu$}, description={Mean intensity of the preprocessed image (used in parameter tuning)}, type=symbolList}
+
+% --- Gabor Filter ---
+\newglossaryentry{sym:lambda}{name={$\lambda$}, description={Gabor filter wavelength; inverse of spatial frequency}, type=symbolList}
+\newglossaryentry{sym:theta}{name={$\theta$}, description={Orientation angle for Gabor filter or Sobel gradient projection}, type=symbolList}
+\newglossaryentry{sym:psi}{name={$\psi$}, description={Phase offset of the Gabor sinusoidal carrier}, type=symbolList}
+\newglossaryentry{sym:sigmaG}{name={$\sigma_G$}, description={Standard deviation of the Gabor Gaussian envelope}, type=symbolList}
+\newglossaryentry{sym:gamma}{name={$\gamma$}, description={Aspect ratio of Gabor filter envelope (default $\gamma = 0.5$)}, type=symbolList}
+
+% --- Directional Edge Enhancement ---
+\newglossaryentry{sym:Gx}{name={$G_x$}, description={Horizontal Sobel gradient image}, type=symbolList}
+\newglossaryentry{sym:Gy}{name={$G_y$}, description={Vertical Sobel gradient image}, type=symbolList}
+\newglossaryentry{sym:Ptheta}{name={$P_\theta(x{,}y)$}, description={Directional gradient projection along orientation $\theta$}, type=symbolList}
+\newglossaryentry{sym:Iedge}{name={$I_{\text{edge}}$}, description={Directional edge-enhanced image output}, type=symbolList}
+
+% --- FFT Noise Removal ---
+\newglossaryentry{sym:Fuv}{name={$F(u{,}v)$}, description={2D Fourier transform coefficient at frequency coordinates $(u,v)$}, type=symbolList}
+\newglossaryentry{sym:Muv}{name={$M(u{,}v)$}, description={Frequency-domain binary mask used in FFT periodic noise removal}, type=symbolList}
+\newglossaryentry{sym:ucvc}{name={$u_c{,}\,v_c$}, description={Centre (DC component) coordinates in the shifted FFT spectrum}, type=symbolList}
+
+% --- Quality Metrics ---
+\newglossaryentry{sym:Iref}{name={$I_{\text{ref}}$}, description={Pseudo-reference image generated by bilateral filtering for self-reference evaluation}, type=symbolList}
+\newglossaryentry{sym:Ienh}{name={$I_{\text{enh}}$}, description={Enhanced image output from Stage~2}, type=symbolList}
+\newglossaryentry{sym:sigmaC}{name={$\sigma_C$}, description={Colour-domain sigma of the bilateral filter (default 25)}, type=symbolList}
+\newglossaryentry{sym:sigmaS}{name={$\sigma_S$}, description={Spatial-domain sigma of the bilateral filter (default 25)}, type=symbolList}
+\newglossaryentry{sym:MSE}{name={$\text{MSE}$}, description={Mean Squared Error between pseudo-reference and enhanced images}, type=symbolList}
+\newglossaryentry{sym:PSNR}{name={$\text{PSNR}$}, description={Peak Signal-to-Noise Ratio in decibels (target $\ge 30\,\text{dB}$)}, type=symbolList}
+\newglossaryentry{sym:SSIM}{name={$\text{SSIM}$}, description={Structural Similarity Index (target $\ge 0.85$)}, type=symbolList}
+\newglossaryentry{sym:mux}{name={$\mu_x{,}\,\mu_y$}, description={Local mean intensities of two image patches used in SSIM computation}, type=symbolList}
+\newglossaryentry{sym:sigx2}{name={$\sigma_x^2{,}\,\sigma_y^2$}, description={Local variances of two image patches used in SSIM computation}, type=symbolList}
+\newglossaryentry{sym:sigxy}{name={$\sigma_{xy}$}, description={Local covariance between two image patches used in SSIM computation}, type=symbolList}
+\newglossaryentry{sym:C1C2}{name={$C_1{,}\,C_2$}, description={Stabilisation constants in the SSIM formula}, type=symbolList}
+\newglossaryentry{sym:CNR}{name={$\text{CNR}$}, description={Contrast-to-Noise Ratio (target $\ge 1.5$)}, type=symbolList}
+\newglossaryentry{sym:mufg}{name={$\mu_{\text{foreground}}$}, description={Mean intensity of foreground (text stroke) pixels in the binarised mask}, type=symbolList}
+\newglossaryentry{sym:mubg}{name={$\mu_{\text{background}}$}, description={Mean intensity of background pixels in the binarised mask}, type=symbolList}
+\newglossaryentry{sym:sigmabg}{name={$\sigma_{\text{background}}$}, description={Standard deviation of background pixel intensities}, type=symbolList}
+\newglossaryentry{sym:Coverage}{name={$\text{Coverage}$}, description={Ink coverage percentage of foreground pixels in the binarised mask}, type=symbolList}
+
+% --- Statistical Analysis ---
+\newglossaryentry{sym:meanStat}{name={$\mu$}, description={Arithmetic mean of channel pixel intensities (statistical analysis)}, type=symbolList}
+\newglossaryentry{sym:stdStat}{name={$\sigma$}, description={Standard deviation of channel pixel intensities (statistical analysis)}, type=symbolList}
+\newglossaryentry{sym:skewStat}{name={$S$}, description={Skewness of the channel intensity distribution}, type=symbolList}
+\newglossaryentry{sym:kurtStat}{name={$K$}, description={Excess kurtosis of the channel intensity distribution}, type=symbolList}
+
+% --- OCR Ensemble ---
+\newglossaryentry{sym:Hline}{name={$H_{\text{line}}$}, description={Height of a detected text line bounding box in the OCR ensemble}, type=symbolList}
+\newglossaryentry{sym:Deltay}{name={$\Delta y$}, description={Vertical overlap distance used for word-to-line grouping in OCR}, type=symbolList}

@@ -1,27 +1,285 @@
 \chapter{Design of the AI-Assisted Digitisation Pipeline}
 
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter).But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph. 
-\section{Contents of this Chapter}
-This chapter should contain the following sections and subsections in detail.
-\begin{enumerate}
-\item Specifications for the Design
-\item Pre analysis work for the design or Models used
-\item Design methodology in detail
-\item Design Equations
-\item Experimental techniques (if any)
-\end{enumerate}
-Apart from the aforementioned sections, you can add sections as per the requirements of the project in consultation with your guide.
+This chapter details the system architecture and mathematical foundations of the multi-artefact digitisation pipeline. It outlines the stage-wise sequential dataflow and presents the design formulations for signal correction, image reconstruction, and feature extraction. The chapter details the ECE custom spatial/frequency filters, the baseline OCR routing design, and the self-reference quality verification framework. Finally, the chapter summarizes these design formulations, bridging system layout to the practical software implementation.
 
-\section{Paraphrasing}
-When you paraphrase a written passage, you rewrite it to state the essential ideas in your own words. Because you do not quote your source word for word when paraphrasing, it is unnecessary to enclose the paraphrased material in quotation marks. However, the paraphrased material must be properly referenced because the ideas are taken from someone else whether or not the words are identical. 
+\section{Pipeline System Architecture and Overview}
 
-Ordinarily, the majority of the notes you take during the research phase of writing your report will paraphrase the original material. Paraphrase only the essential ideas. Strive to put original ideas into your own words without distorting them."
+The digitisation pipeline is structured as a non-destructive sequential signal processing system designed to transform highly degraded scans of historical South Asian artefacts into clean, high-contrast digital assets. The system layout divides execution into discrete, isolated stages to prevent write operations from affecting raw inputs:
 
-\section{Quotations}
-When you have borrowed words, facts, or idea of any kind from someone else's work, acknowledge your debt by giving your source credit in footnote (or in running text as cited reference). Otherwise, you will be guilty of plagiarism. Also, be sure you have represented the original material honestly and accurately. Direct word to word quotations are enclosed in quotation marks."
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    block/.style={rectangle, draw=blue!70, fill=blue!5, thick, rounded corners, minimum width=4.8cm, minimum height=1.1cm, align=center, font=\small},
+    io/.style={ellipse, draw=green!70, fill=green!5, thick, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\small},
+    arrow/.style={thick, ->, >=stealth}
+]
+    % Nodes
+    \node (raw) [io] {Raw Image Scan};
+    \node (s1) [block, below of=raw, yshift=0.3cm] {\textbf{Stage 1: Preprocessing}\\(Orientation, CLAHE, AWB, Crop)};
+    \node (s2) [block, below of=s1, yshift=0.3cm] {\textbf{Stage 2: Signal Enhancement}\\(NLM Denoising, Real-ESRGAN/DStretch)};
+    \node (s3) [block, below of=s2, yshift=0.3cm] {\textbf{Stage 3: Binarisation}\\(Sauvola, Material Rules, UNet/DocEnTr)};
+    \node (s4) [block, below of=s3, yshift=0.3cm] {\textbf{Stage 4: OCR Routing (Provision)}\\(Aspect Ratio, Parallel Ensemble)};
+    \node (s6) [block, below of=s4, yshift=0.3cm] {\textbf{Stage 6: Record Assembly}\\(JSON Metadata, fpdf2 PDF Exporter)};
+    \node (out) [io, below of=s6, yshift=0.3cm] {Structured Record};
 
-\vspace{0.75cm}
+    % Arrows
+    \draw [arrow] (raw) -- (s1);
+    \draw [arrow] (s1) -- (s2);
+    \draw [arrow] (s2) -- (s3);
+    \draw [arrow] (s3) -- (s4);
+    \draw [arrow] (s4) -- (s6);
+    \draw [arrow] (s6) -- (out);
+\end{tikzpicture}
+\caption{Stage-wise sequential architecture and dataflow of the digitisation pipeline.}
+\label{fig:tikz_pipeline_overview}
+\end{figure}
 
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
+The decision to structure the pipeline sequentially is driven by two main signal processing advantages. First, isolating each step allows for intermediate quality inspection, ensuring that errors (such as incorrect cropping or excessive sharpening) do not propagate and cause cumulative signal degradation. Second, it allows for modular execution: depending on the identified artefact material, specific stages are bypassed or routed through specialized processing pipelines, optimizing compute resource allocation.
 
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter.  
+\section{Stage 1: Preprocessing (Signal Correction)}
+
+Preprocessing is designed to remove acquisition-related spatial and radiometric distortions before applying non-linear enhancement algorithms. This stage operates strictly on the colour-invariant properties of the image to prevent shifting original hues.
+
+\subsection{Contrast-Limited Adaptive Histogram Equalisation (CLAHE)}
+Uneven lighting and shadows in field photography create localized exposure gradients. While global histogram equalisation improves overall contrast, it does so by mapping intensities globally, which often over-saturates highlights and amplifies background noise in flat regions. To handle this, the image is converted from RGB to the CIELAB colour space, which decouples luminance ($L^*$) from chromaticity ($a^*, b^*$). By processing only the $L^*$ channel, the original color balance remains unaffected. 
+
+CLAHE divides the $L^*$ channel into a grid of $M \times N$ tiles (default $8 \times 8$). Local contrast is equalised within each tile. To limit noise amplification on flat substrates (such as plain paper or polished metal), the local histogram slope is clipped at a threshold $C_{\text{limit}} = 2.0$. The clipped pixels are distributed uniformly across all bins of the histogram before computing the cumulative distribution function (CDF):
+\begin{equation}
+s_k = T(r_k) = \sum_{j=0}^{k} P_{\text{clipped}}(r_j)
+\end{equation}
+
+\subsection{Grey-World White Balance Correction}
+Archival scans frequently suffer from colour casts caused by variable lighting temperatures. The Grey-World white balance algorithm assumes that the average chromatic response of a natural image under a neutral light source is achromatic (grey). Given RGB channel values, the average channel intensities $\mu_R, \mu_G, \mu_B$ are calculated, and the scale factors $S_c$ for each channel $c \in \{R, G, B\}$ are derived:
+\begin{equation}
+\mu_{\text{overall}} = \frac{\mu_R + \mu_G + \mu_B}{3}
+\end{equation}
+\begin{equation}
+S_c = \frac{\mu_{\text{overall}}}{\mu_c}
+\end{equation}
+The corrected channel intensities $I'_{c}(x, y)$ are then computed by scaling and clipping:
+\begin{equation}
+I'_{c}(x, y) = \min\left(\max\left(I_c(x,y) \cdot S_c, 0\right), 255\right)
+\end{equation}
+Aligning the average intensities of the three color channels removes the color cast, establishing a neutral baseline for subsequent color-space stretching.
+
+\subsection{Morphological Border Cropping}
+Scanner margins, binder clips, and empty background margins represent uninformative canvas regions that consume storage and computational overhead. Scanner margin edges are identified by thresholding the grayscale representation $I_{\text{gray}}$:
+\begin{equation}
+M(x, y) = \begin{cases} 255, & \text{if } \tau < I_{\text{gray}}(x, y) < 255 - \tau \\ 0, & \text{otherwise} \end{cases} \quad (\tau = 10)
+\end{equation}
+A morphological closing operation ($\bullet$) using a $5 \times 5$ rectangular structuring element $K$ fills internal gaps within glyphs to group them into a single connected component mask:
+\begin{equation}
+M_{\text{closed}} = M \bullet K_{5\times5} = (M \oplus K) \ominus K
+\end{equation}
+Bounding box coordinates $\Omega$ enclosing the text block are extracted via:
+\begin{equation}
+\Omega = \arg\min_{x,y,w,h} \left\{ M_{\text{closed}}(x', y') = 255 \; \forall \; x' \in [x, x+w], y' \in [y, y+h] \right\}
+\end{equation}
+To prevent cropping tiny dust specks or noise blobs, the crop box is validated; if the width $w$ or height $h$ is less than $25\%$ of the image width $W$ or height $H$, the crop is rejected as a false positive.
+
+\section{Stage 2: Signal Enhancement (Reconstruction)}
+
+Enhancement aims to reconstruct high-frequency stroke details while separating weathered glyph boundaries from substrate textures.
+
+\subsection{Non-Local Means (NLM) Denoising}
+Classical spatial filters (like Gaussian or median blurs) remove noise by averaging local pixel neighborhoods, which blurs high-frequency character boundaries. NLM denoising preserves sharp edges by averaging pixels across the entire search window based on the structural similarity of their neighborhoods. The denoised pixel value $NL(I)(p)$ at coordinate $p$ is defined as:
+\begin{equation}
+NL(I)(p) = \frac{1}{C(p)} \sum_{q \in \mathcal{S}} I(q) w(p, q)
+\end{equation}
+where $C(p) = \sum_{q \in \mathcal{S}} w(p, q)$ is a normalisation factor, $\mathcal{S}$ is a search window of size $21 \times 21$, and the weight $w(p, q)$ is computed using the Euclidean distance between patches $B(p)$ and $B(q)$ of size $7 \times 7$:
+\begin{equation}
+w(p, q) = \exp\left( -\frac{\|I(B(p)) - I(B(q))\|_2^2}{h^2} \right)
+\end{equation}
+Here, $h = 10$ regulates the filtering strength. If the spatial patch around pixel $q$ structurally resembles the patch around pixel $p$, the weight is high, allowing for effective denoising without blurring the stroke boundaries.
+
+\subsection{Real-ESRGAN Super-Resolution}
+Real-ESRGAN is a deep generative adversarial network designed to restore degraded images. Its generator, based on the RRDB (Residual-in-Residual Dense Block) architecture, uses residual skip connections to pass low-frequency information directly through the network, allowing the model to focus on reconstructing high-frequency stroke details:
+\begin{itemize}
+	\item \textbf{Outscale = 2:} The model performs a $4\times$ spatial interpolation internally. To prevent the generator from hallucinating synthetic stroke details or generating artifacts on weathered stone, the output is downscaled to $2\times$ zoom, which preserves the original character structures.
+	\item \textbf{Tiling:} Large archival scans can exceed GPU memory capacities. Splitting the input into $400 \times 400$ pixel tiles with $10\text{ px}$ overlap padding eliminates memory exhaustions. The overlap padding ensures seamless blending at tile boundaries during recombination.
+\end{itemize}
+
+\subsection{DStretch (Decorrelation Stretch)}
+DStretch is a color-space decorrelation technique that highlights subtle color variations. RGB channels are highly correlated in natural photographs. DStretch decorrelates these channels, projects them onto their principal components, scales the variance, and projects them back.
+Let $X$ be the centered data matrix ($X_c = X - \mu$):
+\begin{equation}
+\Sigma = \frac{1}{N - 1} X_c^T X_c
+\end{equation}
+Using Singular Value Decomposition (SVD) on the covariance matrix:
+\begin{equation}
+\Sigma = V \Lambda V^T
+\end{equation}
+where $V$ represents the eigenvectors and $\Lambda$ the diagonal matrix of eigenvalues. The stretch transformation matrix $M$ is defined as:
+\begin{equation}
+M = V \Lambda^{-1/2} V^T
+\end{equation}
+The stretched coordinates $Y$ are obtained via:
+\begin{equation}
+Y = X_c M
+\end{equation}
+A final Min-Max normalisation scales the channels back to $[0, 255]$. On faded pigments (such as red ochre in cave paintings) or oxidized patinas on palm leaves, DStretch amplifies subtle color differences, making faded character boundaries visible.
+
+\subsection{Unsharp Masking}
+Subtracting a low-pass filtered version of the image from the original isolates high-frequency edge gradients. Adding these gradients back to the original image increases edge contrast:
+\begin{equation}
+I_{\text{sharp}} = I_{\text{orig}} + \alpha \left( I_{\text{orig}} - G_{\sigma=3}(I_{\text{orig}}) \right) \quad (\alpha = 1.5)
+\end{equation}
+where $G_{\sigma=3}$ represents a Gaussian blur filter with a standard deviation of 3 pixels. This edge-gradient boost facilitates clean binarisation.
+
+\section{Stage 3: Binarisation (Feature Extraction)}\label{sec:binarisation}
+
+Binarisation generates the final binary mask containing glyph strokes (foreground) and substrate (background), which is essential for character segmentation and preservation.
+
+\subsection{Sauvola Adaptive Local Thresholding}
+Global thresholding methods (such as Otsu's) calculate a single threshold value for the entire image, which fails on historical pages with uneven staining, fading, or shadow gradients. Sauvola's local thresholding calculates a separate threshold for each pixel based on local statistics within a sliding window $W$:
+\begin{equation}
+T_{\text{Sauvola}}(x, y) = m(x, y) \cdot \left[ 1 + k \cdot \left( \frac{s(x, y)}{R} - 1 \right) \right]
+\end{equation}
+where $m(x,y)$ is the local mean intensity, $s(x,y)$ is the local standard deviation, $R = 128$ is the dynamic range of standard deviation, and $k$ controls threshold aggressiveness. In high-contrast text regions, $s(x,y)$ is close to $R$, making the threshold adaptive, whereas in low-contrast background regions, the threshold drops to keep the background black/white.
+
+\subsection{Adaptive Parameter Tuning Logic}
+Rather than using static values, the pipeline dynamically calculates Sauvola parameters $(W, k)$ using the standard deviation ($\sigma$) and average intensity ($\mu$) of the preprocessed image to handle various degradation levels:
+\begin{equation}
+\text{Base Window } W_{\text{base}} = \max\left(15, \min\left(71, \text{short\_side} // 20\right)\right) \quad (\text{adjusted to odd})
+\end{equation}
+The threshold sensitivity parameter $k_{\text{base}}$ is tuned based on global image statistics:
+\begin{equation}
+k_{\text{base}} = \begin{cases} 
+0.30, & \text{if } \sigma < 25 \quad \text{(Low contrast substrates requiring aggressive binarisation)} \\
+0.25, & \text{if } 25 \le \sigma < 40 \quad \text{(Standard stone inscriptions)} \\
+0.15, & \text{if } \mu > 160 \quad \text{(High brightness paper manuscripts; prevents stroke thinning)} \\
+0.18, & \text{if } \mu < 60 \quad \text{(Dark rubbings and estampages; preserves white strokes)} \\
+0.20, & \text{otherwise}
+\end{cases}
+\end{equation}
+
+\subsection{Specialized Binarisation Pipelines}
+\begin{itemize}
+	\item \textbf{Stone Inscriptions:} Applies bilateral filtering ($d=9, \sigma=50$) to smooth textures while preserving edges, followed by Sauvola thresholding with dynamic window and $k=0.25$, morphological closing, and an edge-based flood fill to clear margins.
+	\item \textbf{Palm Leaf character binarisation:} Generates a rough mask on the R-channel, dilates to identify connected component bounding boxes, crops character regions, and applies local Sauvola using a dynamic window:
+\begin{equation}
+W_{\text{crop}} = \max\left(7, \min\left(31, \text{crop\_side} // 3\right)\right)
+\end{equation}
+	This character-level local thresholding prevents organic background fibers from connecting adjacent characters.
+	\item \textbf{Copper Plate Inscriptions:} Insets the plate bounding box by 6 pixels to remove border patinas, runs bilateral filtering, applies Sauvola ($W=31, k=0.12$), and filters out components touching the bounding box edge.
+	\item \textbf{Direct Rubbings:} Applies median blur ($K_{\text{size}}=13$) to remove paper grain noise, followed by Otsu global thresholding.
+\end{itemize}
+
+\subsection{Deep Learning Architectures}
+\begin{itemize}
+	\item \textbf{LightUNet:} A convolutional network with 3 downsampling layers ($32 \rightarrow 64 \rightarrow 128 \rightarrow 256$ channels), skip connections to preserve spatial details, and a Sigmoid classifier.
+	\item \textbf{DocEnTr:} A patch-based Visual Transformer (ViT) encoder ($8 \times 8$ patch size, embedding dimension 256, 4 transformer layers, 8 attention heads) designed to capture spatial dependencies across the page, paired with a linear projection layer and a 3-layer CNN decoder.
+	\item \textbf{Fallback routing:} Deep learning models can sometimes generate artifacts or misclassify degraded text regions. To prevent this, binarisation certainty is checked using binary entropy. If the entropy certainty is $< 0.65$ or model weights are missing, the system falls back to the Sauvola pipeline.
+\end{itemize}
+
+\section{Custom ECE Signal Processing Filters}
+
+Three mathematical operations are implemented in the frequency and spatial domains to enhance character structures:
+
+\subsection{Gabor Filter Bank (Spatial Frequency Localization)}
+Gabor filters act as bandpass filters matching the width and orientation of character strokes, isolating text from random background stone textures:
+\begin{equation}
+g(x,y;\lambda,\theta,\psi,\sigma,\gamma) = \exp\left(-\frac{x'^2 + \gamma^2 y'^2}{2\sigma^2}\right) \cos\left(2\pi\frac{x'}{\lambda} + \psi\right)
+\end{equation}
+where $x' = x\cos\theta + y\sin\theta$ and $y' = -x\sin\theta + y\cos\theta$.
+\begin{itemize}
+	\item \textbf{Wavelength ($\lambda$):} Scaled inverse of filter frequency $[0.1, 0.2, 0.4]$, tuned to stroke width.
+	\item \textbf{Orientation ($\theta$):} 8 directions spaced evenly over $[0, \pi]$ to capture all stroke orientations.
+	\item \textbf{Aspect ratio ($\gamma$):} Set to $0.5$ for stroke anisotropy.
+\end{itemize}
+
+\subsection{Directional Edge Enhancement (Sobel Gradient Projections)}
+To highlight glyph contours and carvings in stone or copper plate inscriptions, horizontal ($G_x$) and vertical ($G_y$) Sobel gradients are projected along a specified orientation angle $\theta$ (default $\theta = 45^\circ$ for diagonal relief lighting):
+\begin{equation}
+G_x = \text{Sobel}(I, x, 3), \quad G_y = \text{Sobel}(I, y, 3)
+\end{equation}
+\begin{equation}
+P_{\theta}(x, y) = G_x(x,y) \cos\theta + G_y(x,y) \sin\theta
+\end{equation}
+The directional edge map $I_{\text{edge}}$ is obtained by taking the absolute value of the projection and applying Min-Max normalisation:
+\begin{equation}
+I_{\text{edge}} = \text{MinMaxNorm}\left(|P_\theta|\right) \times 255
+\end{equation}
+This boosts edge contrast for strokes aligned with relief lighting angles, facilitating binarisation.
+
+\subsection{FFT Periodic Noise Removal (Frequency Domain Masking)}
+Flatbed scanner sensors or regular document grains can introduce periodic noise (horizontal or vertical lines) at specific frequencies. A frequency-domain notch filter is used to suppress these periodic spikes:
+1. Shift the 2D Fast Fourier Transform of the image:
+\begin{equation}
+F(u, v) = \mathcal{F}(I(x,y))
+\end{equation}
+2. Identify periodic spikes outside the central DC window ($12 \times 12$ square) where frequency magnitudes exceed a threshold relative to the maximum spectrum:
+\begin{equation}
+M(u, v) = \begin{cases} 0, & \text{if } |u - u_c| \ge 12 \text{ and } |v - v_c| \ge 12 \text{ and } |F(u,v)| > \text{max\_spectrum} \cdot (1 - \text{threshold}) \\ 1, & \text{otherwise} \end{cases}
+\end{equation}
+3. Recover the filtered image:
+\begin{equation}
+I_{\text{clean}}(x, y) = \mathcal{F}^{-1}(F(u, v) \cdot M(u, v))
+\end{equation}
+This zeroes out the periodic noise spikes without affecting broadband text features.
+
+\section{Optical Character Recognition (OCR) Baseline Design}
+
+Although translation and final transcriptions are deferred, Stage 4 provides the script detection and ensemble framework:
+
+\subsection{Script Detection}
+Computes the bounding box aspect ratio of connected components on the Otsu binary mask.
+\begin{itemize}
+	\item **Devanagari script:** Characters have a horizontal top line (*shirorekha*), which makes their bounding boxes wider/taller, yielding low aspect ratios ($< 0.7$).
+	\item **Tamil script:** Characters are more rounded, yielding higher aspect ratios ($\ge 0.7$).
+\end{itemize}
+
+\subsection{Ensemble Logic}
+* Runs Tesseract (`--oem 1 --psm 6`) and EasyOCR (`detail=1`) in parallel.
+* Compares average word confidence scores between the two engines, selecting the text block with the highest confidence.
+* Merges bounding boxes from both engines, removing duplicate boxes by position.
+* Places words into lines based on their vertical overlaps:
+\begin{equation}
+\Delta y \le \max\left(0.6 \cdot H_{\text{line}}, 8\right)
+\end{equation}
+
+\section{Record Assembly and Quality Verification Design}
+
+\subsection{Self-Reference Evaluation Mode}
+Evaluating quality on historical inscriptions is challenging because there are no clean "ground-truth" images. The pipeline addresses this by implementing a **Self-Reference Evaluation Mode** where a pseudo-reference image $I_{\text{ref}}$ is created by applying a mild, edge-preserving bilateral filter to the enhanced image $I_{\text{enh}}$:
+\begin{equation}
+I_{\text{ref}} = \text{BilateralFilter}(I_{\text{enh}}, d=9, \sigma_C=25, \sigma_S=25)
+\end{equation}
+This reference preserves glyph shapes while removing high-frequency artifacts (such as ringing, haloing, and noise amplification) from the enhancement stage.
+
+\subsection{Self-Reference Peak Signal-to-Noise Ratio (PSNR)}
+PSNR evaluates noise and artifact levels relative to the pseudo-reference image:
+\begin{equation}
+\text{MSE} = \frac{1}{H \times W} \sum_{x=0}^{W-1} \sum_{y=0}^{H-1} \left( I_{\text{ref}}(x, y) - I_{\text{enh}}(x, y) \right)^2
+\end{equation}
+\begin{equation}
+\text{PSNR} = 10 \cdot \log_{10}\left( \frac{255^2}{\text{MSE}} \right) \quad (\text{Target} \ge 30.0\text{ dB})
+\end{equation}
+
+\subsection{Self-Reference Structural Similarity Index (SSIM)}
+SSIM measures how well local shapes, stroke directions, and glyph spaces are preserved:
+\begin{equation}
+\text{SSIM}(x, y) = \frac{(2\mu_x\mu_y + C_1)(2\sigma_{xy} + C_2)}{(\mu_x^2 + \mu_y^2 + C_1)(\sigma_x^2 + \sigma_y^2 + C_2)} \quad (\text{Target} \ge 0.85)
+\end{equation}
+
+\subsection{Contrast-to-Noise Ratio (CNR)}
+CNR measures contrast between character strokes and background areas:
+\begin{equation}
+\text{CNR} = \frac{|\mu_{\text{foreground}} - \mu_{\text{background}}|}{\sigma_{\text{background}}} \quad (\text{Target} \ge 1.5)
+\end{equation}
+Where $\mu_{\text{foreground}}$ and $\mu_{\text{background}}$ are the mean intensities of text and background pixels, and $\sigma_{\text{background}}$ is the standard deviation of background noise.
+
+\subsection{Ink Coverage Check}
+Evaluates the proportion of foreground text pixels in the binarised image:
+\begin{equation}
+\text{Coverage} = \frac{\sum M(x, y) = 255}{H \times W} \times 100\%
+\end{equation}
+\begin{itemize}
+	\item \textbf{Lower limit ($0.5\%$):} Delineates empty crops where no text was extracted.
+	\item \textbf{Upper limit ($45\%$):} Identifies frames filled with noise or solid black borders.
+\end{itemize}
+
+\section{Summary}
+
+This chapter detailed the mathematical and architectural design of the digitisation pipeline. The stage-wise sequential architecture has been visualised, showing the progression from raw scans to structured JSON and PDF reports. The equations governing pre-processing (CLAHE, white balance, morphological cropping) and enhancement (NLM, Real-ESRGAN, DStretch, sharpening) establish the theoretical boundaries. Binarisation routing, parameter tuning logic, and neural models (LightUNet, DocEnTr) represent the feature extraction layer. Custom ECE spatial and frequency domain filters (Gabor, Sobel edge projection, and FFT periodic notch filtering) enhance text features. The baseline OCR design defines script routing and parallel engine ensemble rules. Finally, the self-reference quality metrics (PSNR, SSIM, CNR, coverage check) validate that the pipeline preserves characters. With this mathematical design, Chapter 4 details the software implementation of the pipeline modules.

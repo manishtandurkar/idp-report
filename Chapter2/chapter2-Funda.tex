@@ -4,7 +4,7 @@ This chapter establishes the theoretical foundation for heritage digitisation by
 
 \section{Heritage Artefacts and Degradation Mechanisms}
 
-The digitisation pipeline addresses five distinct categories of historical artefacts, each subject to characteristic forms of degradation that shape the processing strategy. Understanding the material science behind these degradation processes informs the selection of enhancement techniques and quality metrics.
+The digitisation pipeline addresses six distinct categories of historical artefacts, each subject to characteristic forms of degradation that shape the processing strategy. Understanding the material science behind these degradation processes informs the selection of enhancement techniques and quality metrics.
 
 \subsection{Stone Inscriptions}
 
@@ -17,7 +17,7 @@ Stone inscriptions represent carved texts on durable substrates—granite, limes
 	\item \textbf{Subsurface scattering:} Some stone types (sandstone, marble) permit light to penetrate and scatter within the material, further reducing contrast.
 \end{itemize}
 
-The enhancement strategy for stone inscriptions (Section \ref{sec:dstretch}) leverages decorrelation stretch in the LAB colour space to reveal hidden colour information invisible to human perception.
+The enhancement strategy for stone inscriptions leverages Non-Local Means (NLM) denoising and unsharp masking to sharpen character boundaries, while decorrelation stretch (Section \ref{sec:dstretch}) is reserved for palm leaves and cave paintings.
 
 \subsection{Palm Leaf Manuscripts}
 
@@ -68,6 +68,19 @@ Rock art (red ochre or charcoal pigments on stone) presents unique challenges:
 \end{itemize}
 
 DStretch technology (originally developed for rock art analysis) is deployed for this category, employing colour decorrelation to separate pigment from stone substrate.
+
+\subsection{Direct Rubbings (Estampages)}
+
+Direct rubbings or estampages (squeezes) are paper impressions made by pressing wet paper into the carved characters of a stone or copper plate inscription and rubbing ink or coal dust over the dry surface. Although they remove the stone's texture, they introduce:
+
+\begin{itemize}
+	\item \textbf{Paper grain texture:} The fibrous nature of the handmade paper used creates high-frequency noise that can interfere with optical character extraction.
+	\item \textbf{Uneven ink/coal density:} Manual application causes variable pressure, leading to faded areas or oversaturated blots that blur stroke boundaries.
+	\item \textbf{Contrast reversal:} Rubbings feature light/white characters against a dark inked background, which is the inverse of standard black-ink-on-white-paper documents and requires explicit inversion handling.
+	\item \textbf{Creases and tears:} Handling of the large paper sheets leaves folds and creases that appear as dark lines under digitisation lighting.
+\end{itemize}
+
+Direct rubbings are routed through a median-filter-based noise suppression step followed by Otsu global binarisation (Section \ref{sec:binarisation}) to handle the bimodal contrast profile.
 
 \section{Image Processing Fundamentals}\label{sec:fundamentals}
 
@@ -167,9 +180,9 @@ Post-binarisation, morphological operations refine the result:
 	\item \textbf{Opening} ($\text{erosion} \circ \text{dilation}$): Removes small noise and dust specks.
 \end{itemize}
 
-\section{Optical Character Recognition (OCR)}
+\section{Optical Character Recognition (OCR) Baseline Design}
 
-OCR is the bottleneck of the pipeline: converting pixel patterns to Unicode text. Two engines are deployed: Tesseract (classical HMM-based) and EasyOCR (deep learning).
+While the current phase focuses on image processing (preprocessing, enhancement, binarisation) and record assembly, a baseline design provision for Optical Character Recognition (OCR) is established to guide future expansion. Under this design, two engines—Tesseract (classical HMM-based) and EasyOCR (deep learning)—are configured to run in parallel to transcribe character patterns.
 
 \subsection{Tesseract OCR Architecture}
 
@@ -218,6 +231,8 @@ Thresholds are applied:
 
 This ensemble approach improves recall (finding all text) by 8–12\% compared to either engine alone, critical for heritage digitisation where missing a portion of an ancient text is a data loss.
 
+Due to the absence of production-ready models for ancient scripts like Brahmi and Grantha, this script routing and ensemble framework remains a structural layout provision. Active transcription is bypassed in the current implementation, with fields prepared in the records to ingest manual transcripts or future model integrations.
+
 \section{Signal Processing and Filter Design}
 
 The ECE team contributes custom signal processing filters to enhance specific artefact features.
@@ -234,6 +249,28 @@ where $x' = x \cos\theta + y \sin\theta$, $y' = -x \sin\theta + y \cos\theta$, $
 
 A \textbf{Gabor filter bank} applies multiple frequencies and orientations (e.g., 3 frequencies × 8 orientations = 24 filters) to decompose an image into oriented texture components. Inscriptions have strong directional edges (vertical strokes, horizontal strokes); Gabor response peaks at matching orientations, enabling character/background separation and binarisation refinement.
 
+\subsection{Directional Edge Enhancement}
+
+To highlight glyph contours and directional carvings in stone or copper plate inscriptions, a directional edge enhancement filter is implemented in the spatial domain using Sobel gradient projections. The image gradients in the horizontal ($G_x$) and vertical ($G_y$) directions are calculated using $3\times3$ Sobel operators:
+
+\begin{equation}
+G_x = \text{Sobel}(I, x, 3), \quad G_y = \text{Sobel}(I, y, 3)
+\end{equation}
+
+These gradients are projected along a specified orientation angle $\theta$ (default $\theta = 45^\circ$ for diagonal relief lighting) to compute the directional gradient $P_{\theta}$:
+
+\begin{equation}
+P_{\theta}(x, y) = G_x(x,y) \cos\theta + G_y(x,y) \sin\theta
+\end{equation}
+
+The directional edge map $I_{edge}$ is obtained by taking the absolute value of the projection and applying Min-Max normalisation to scale values back to the $[0, 255]$ range:
+
+\begin{equation}
+I_{edge} = \text{MinMaxNorm}\left(|P_\theta(x, y)|\right) \times 255
+\end{equation}
+
+This filter boosts directional edge contrast, helping Sauvola binarisation trace weathered character cuts.
+
 \subsection{FFT-Based Periodic Noise Removal}
 
 Flatbed scanner line artefacts produce periodic noise—horizontal stripes at a fixed frequency (e.g., 0.1 cycles/pixel). The Fast Fourier Transform (FFT) converts an image to frequency domain:
@@ -246,51 +283,70 @@ Periodic noise appears as sharp peaks in $|F(u,v)|$ at specific frequencies. The
 
 \section{Quality Assessment Metrics}
 
-Validating whether an enhanced image is actually improved requires objective metrics (beyond human visual inspection).
+Validating whether an enhanced image is actually improved requires objective metrics (beyond human visual inspection). Evaluating quality on historical inscriptions is challenging because there are no clean "ground-truth" images. The pipeline addresses this by implementing a \textbf{Self-Reference Evaluation Mode}, where a pseudo-reference image $I_{ref}$ is created by applying a mild, edge-preserving bilateral filter to the enhanced image $I_{enh}$:
+
+\begin{equation}
+I_{ref} = \text{BilateralFilter}(I_{enh}, d=9, \sigma_C=25, \sigma_S=25)
+\end{equation}
+
+This reference preserves glyph shapes while removing high-frequency artifacts (such as ringing, haloing, and noise amplification) from the enhancement stage. The quality metrics are then computed relative to this pseudo-reference.
 
 \subsection{Peak Signal-to-Noise Ratio (PSNR)}
 
-PSNR measures fidelity of a processed image $\hat{I}$ relative to a reference (original or ground truth) $I$:
+PSNR evaluates noise and artifact levels relative to the pseudo-reference image:
 
 \begin{equation}
-\text{PSNR} = 10 \log_{10} \left( \frac{\text{MAX}^2}{\text{MSE}} \right) \text{ dB}
+\text{MSE} = \frac{1}{H \times W} \sum_{x=0}^{W-1} \sum_{y=0}^{H-1} \left( I_{ref}(x, y) - I_{enh}(x, y) \right)^2
+\end{equation}
+\begin{equation}
+\text{PSNR} = 10 \cdot \log_{10}\left( \frac{255^2}{\text{MSE}} \right) \text{ dB} \quad (\text{Target} \ge 30.0\text{ dB})
 \end{equation}
 
-where $\text{MAX} = 255$ for 8-bit images and $\text{MSE} = \frac{1}{M \cdot N} \sum_{x,y} (I(x,y) - \hat{I}(x,y))^2$.
-
-\textbf{Interpretation:} PSNR $\geq 30$ dB indicates imperceptible difference to human vision. PSNR $\geq 40$ dB is excellent. However, PSNR is sensitive to slight shifts or blur and does not correlate perfectly with perceptual quality—a sharpened image with small errors can score lower than a blurred image.
+Over-processed images with severe artifacts will produce a higher MSE, lowering the PSNR score.
 
 \subsection{Structural Similarity Index (SSIM)}
 
-SSIM corrects for PSNR's limitations by measuring structural rather than per-pixel similarity:
+SSIM measures how well local shapes, stroke directions, and glyph spaces are preserved relative to the pseudo-reference:
 
 \begin{equation}
-\text{SSIM}(I, \hat{I}) = \frac{(2\mu_I \mu_{\hat{I}} + C_1)(2\sigma_{I\hat{I}} + C_2)}{(\mu_I^2 + \mu_{\hat{I}}^2 + C_1)(\sigma_I^2 + \sigma_{\hat{I}}^2 + C_2)}
+\text{SSIM}(x, y) = \frac{(2\mu_x\mu_y + C_1)(2\sigma_{xy} + C_2)}{(\mu_x^2 + \mu_y^2 + C_1)(\sigma_x^2 + \sigma_y^2 + C_2)} \quad (\text{Target} \ge 0.85)
 \end{equation}
 
-where $\mu$ are means, $\sigma$ are standard deviations, $\sigma_{I\hat{I}}$ is covariance, and $C_1, C_2$ are stabilisation constants. SSIM ranges in $[0, 1]$ with 1 meaning identical images.
-
-\textbf{Target:} SSIM $\geq 0.85$ indicates good preservation of text edges and structure, important for OCR performance.
+where $\mu$ represent the local mean intensities, $\sigma^2$ are the local variances, $\sigma_{xy}$ is the local covariance, and $C_1, C_2$ are stabilization constants.
 
 \subsection{Contrast-to-Noise Ratio (CNR)}
 
-For text recognition, local contrast between text and background matters more than absolute intensity. Given a binary text mask $M$:
+CNR measures local contrast between character strokes and background areas:
 
 \begin{equation}
-\text{CNR} = \frac{|\mu_{\text{text}} - \mu_{\text{background}}|}{\sigma_{\text{background}}}
+\text{CNR} = \frac{|\mu_{\text{foreground}} - \mu_{\text{background}}|}{\sigma_{\text{background}}} \quad (\text{Target} \ge 1.5)
 \end{equation}
 
-Higher CNR indicates easier OCR. CNR correlates better with character recognition accuracy than PSNR.
+Where $\mu_{\text{foreground}}$ and $\mu_{\text{background}}$ are the mean intensities of text and background pixels, and $\sigma_{\text{background}}$ is the standard deviation of background noise.
 
 \subsection{Edge Sharpness (Laplacian Variance)}
 
-OCR relies on sharp character edges. Sharpness can be estimated via Laplacian variance:
+Glyph binarisation relies on sharp character edges. Sharpness is estimated via Laplacian variance:
 
 \begin{equation}
-\text{Sharpness} = \text{Var}(\nabla^2 I)
+\text{Sharpness} = \text{Var}(\nabla^2 I_{enh})
 \end{equation}
 
-where $\nabla^2 I$ is the Laplacian (second derivative). High Laplacian variance indicates strong edges. This metric is particularly useful for verifying that super-resolution does not over-smooth text.
+where $\nabla^2 I_{enh}$ is the Laplacian (second derivative) of the enhanced image. High Laplacian variance indicates strong edges. This metric is useful for verifying that super-resolution does not over-smooth text.
+
+\subsection{Ink Coverage Check}
+
+In addition to signal-level metrics, the pipeline evaluates the structural integrity of the final binarised text mask $M$ by measuring the proportion of foreground text pixels (ink density):
+
+\begin{equation}
+\text{Coverage} = \frac{\sum M(x, y) = 255}{H \times W} \times 100\%
+\end{equation}
+
+This metric is validated against two key limits:
+\begin{itemize}
+	\item \textbf{Lower limit ($0.5\%$):} Detects empty or failed crops where no text strokes were successfully extracted.
+	\item \textbf{Upper limit ($45\%$):} Flags over-segmentation frames filled with background noise, staining, or solid black scanner margins.
+\end{itemize}
 
 \section{Supporting Tools and Software Stack}
 
@@ -328,32 +384,4 @@ The implementation leverages established libraries and frameworks, each selected
 
 \section{Summary}
 
-This chapter has established the theoretical foundation for heritage digitisation by examining artefact degradation mechanisms, image processing mathematics, and signal processing techniques underlying the pipeline. The five artefact categories—stone inscriptions, palm leaf manuscripts, copper plates, paper, and rock art—each exhibit distinct degradation modes requiring tailored enhancement strategies. Image processing fundamentals, from colour space representation to adaptive binarisation, provide the mathematical framework for Stage 1–3 processing. OCR theory and ensemble methods address the critical transition from images to searchable Unicode text. Quality metrics (PSNR, SSIM, CNR, sharpness) provide objective validation that enhancement actually improves inscriptions rather than merely applying visual filters. The supporting software stack—OpenCV, PyTorch, EasyOCR, and Indic transliteration tools—bridges theory to implementation. With this foundation, Chapter 3 proceeds to the system architecture and design decisions that orchestrate these components into a coherent end-to-end pipeline.
-
-\section{Use of Acronyms and Glossaries}
-Acronyms are nothing but the short form of regular repeated word. Say for example, you have a repeat word "Integrated Circuits" and you want to use a short form for it as "IC". For which you have to first define the word and use it wherever you wanted to refer it.
-
-First, let's look at the definition, which has to be entered in \texttt{Glossaries.tex} under \texttt{CoverPages} directory.
-\begin{verbatim}
-%\newacronym{<Ref>}{<Short-Form>}{<Expanded word>}
-\newacronym{ic}{IC}{Integrated Circuits}
-\end{verbatim}
-In order to use the defined acronym, use the commands \verb|\gls{<Ref>}| as shown below
-
-As an example, call the definition with \verb|\gls{ic}| and the outcome of it is reflected as, \gls{ic}.
-
-Note: For the First time, the expanded form appears along with the Short-form definition inside parenthesis. But when the \verb|\gls{}| is repeated, only Short-form appears inside the parenthesis.
-
-Now, let's look at the definition of symbols. Follow the syntax to define the symbol first, inside \texttt{Glossaries.tex} under \texttt{CoverPages} directory.
-\begin{verbatim}
-%\newglossaryentry{<Ref>}{name=<Symbol>, description={<description about the symbol>}, type=<List type>}
-\newglossaryentry{rc}{name=$\tau$, description={Time constant}, type=symbolList}
-\end{verbatim}
-
-As an example, the rate of change is defined with \verb|\gls{rc}| and the outcome of it is reflected as, the rate of change is defined with \gls{rc}.
-
-\vspace{0.75cm}
-
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
-
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter.
+This chapter has established the theoretical foundation for heritage digitisation by examining artefact degradation mechanisms, image processing mathematics, and signal processing techniques underlying the pipeline. The six artefact categories—stone inscriptions, palm leaf manuscripts, copper plate inscriptions, paper manuscripts, cave paintings, and direct rubbings—each exhibit distinct degradation modes requiring tailored enhancement strategies. Image processing fundamentals, from colour space representation to adaptive binarisation, provide the mathematical framework for Stage 1–3 processing. The baseline design provision for OCR routing and ensemble methods outlines the transition from images to Unicode text. Custom frequency and spatial domain filters, including Gabor orientation banks, directional Sobel edge enhancement, and FFT periodic noise removal, provide tailored signal extraction. Quality metrics, including PSNR, SSIM, CNR, edge sharpness, and ink coverage checks, provide objective self-reference validation that enhancement and binarisation actually preserve and isolate text. The supporting software stack—OpenCV, PyTorch, EasyOCR, and Indic transliteration tools—bridges theory to implementation. With this foundation, Chapter 3 proceeds to the system architecture and design decisions that orchestrate these components into a coherent end-to-end pipeline.

@@ -5,7 +5,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Document settings
 \title{Digitisation of Historical Inscriptions and Manuscripts}
-\subCode{CS367P}
+\subCode{XX367P}
 % Note: While using the template for IDP, the \Department cmd is not used (discarded automatically) in IDP. The Certificate page uses \guideDeptA[]{} cmd in IDP.
 \Department[ECE]{Electronics and Communication Engineering}
 \academicYear{2025-26}
@@ -149,9 +149,24 @@
 	\listoftables	
 \end{spacing}
 
-\printglossary[type=\acronymtype, title= Abbreviations, toctitle=Abbreviations]
+% Force all glossary entries to appear (no \gls{} citations needed in text)
+\glsaddall
 
-\printglossary[type=symbolList, title= List of Symbols, toctitle=List of Symbols]
+\newpage
+\pagestyle{fplain}
+\begin{spacing}{1.5}
+	\cleardoublepage
+	\addcontentsline{toc}{chapter}{List of Abbreviations}
+	\printglossary[type=\acronymtype, title={List of Abbreviations}, toctitle={List of Abbreviations}]
+\end{spacing}
+
+\newpage
+\pagestyle{fplain}
+\begin{spacing}{1.5}
+	\cleardoublepage
+	\addcontentsline{toc}{chapter}{List of Symbols}
+	\printglossary[type=symbolList, title={List of Symbols}, toctitle={List of Symbols}]
+\end{spacing}
 \fi
 \mainmatter
 \pagestyle{mplain}

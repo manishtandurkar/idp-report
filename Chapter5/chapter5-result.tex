@@ -1,110 +1,270 @@
 \chapter{Results \& Discussions}
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter).But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph.
-\section{Contents of this chapter}
-All the results obtained for your objectives should be discussed in this chapter. This chapter should contain the following sections as per the project.
-\begin{enumerate}
-\item Simulation results
-\item Experimental results
-\item Performance Comparison
-\item Inferences drawn from the results obtained
-\end{enumerate}
-All the figures should be properly explained by bringing the scenarios of the design done in the project. A detailed discussion of results obtained should be done in this chapter.
 
-\section{Tables in thesis}
-\begin{itemize}
-	\item All Table Caption should be in Sentence Case, TNR 10 Pt. It should be of the Format:
-	\begin{itemize}
-		\item Table 1.1 Results of the experiment ….(Centered)
-	\end{itemize}
-	\item It should be cited as Table 1.1.
-	\item Caption should appear above the Table.
-	\item Table Header and the entries should be of Font TNR 10 Pt, Justified.
-	\item For wider Table, the page orientation can be Landscape.
-	\item For Larger Table, it can run to pages and the header should be repeated for each page of the Table.
-	\item Table must be adjusted to fit in the page and no single row is left out for a new page.	
-\end{itemize}
+Validation of the multi-artefact digitisation pipeline evaluates processing efficacy through visual output comparison, quantitative quality metrics, and system throughput benchmarks. Section 5.1 presents the simulation and visual results across distinct artefact stages, comparing raw, preprocessed, enhanced, and binarised outputs. Section 5.2 establishes the experimental evaluations using self-reference image quality metrics, verifying signal preservation and noise suppression. Section 5.3 investigates execution performance and resource requirements, contrasting local workstation benchmarks against cloud deployment footprints. Finally, Section 5.4 outlines the inferences drawn from algorithm routing strategies, establishing suitability guidelines for South Asian historical records.
 
-Sample Table \ref{c5:tab1} is given below for your reference,
+\section{Simulation Results}
 
-\begin{table}[htb]
+The simulation results provide a visual assessment of the sequential processing stages for three core historical materials. Figure \ref{fig:stone_stages} illustrates the stage-wise execution outputs for a weathered stone inscription scanning dataset. The raw scan in Figure \ref{fig:stone_stages}(a) displays severe contrast degradation, surface cracking, and shadow cast by oblique raking light. Preprocessing in Figure \ref{fig:stone_stages}(b) normalises the exposure using LAB-space CLAHE and auto-white balancing, while border cropping discards uninformative margins. Oblique shadows and surface roughness are smoothed by the Fast Non-Local Means (NLM) filter, and unsharp masking highlights the glyph grooves in Figure \ref{fig:stone_stages}(c). Finally, binarisation using the dynamic window Sauvola pipeline isolates character strokes from the stone texture, as shown in Figure \ref{fig:stone_stages}(d).
+
+\begin{figure}[htbp]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[width=0.45\textwidth]{Figures/1stOrg} &
+		\includegraphics[width=0.45\textwidth]{Figures/1stPreprocessed} \\
+		(a) Raw Inscription Scan & (b) Preprocessed Output \\
+		\includegraphics[width=0.45\textwidth]{Figures/1stEnhanced} &
+		\includegraphics[width=0.45\textwidth]{Figures/1stBinarised} \\
+		(c) Enhanced Output & (d) Binarised Result
+	\end{tabular}
+	\caption{Stage-wise processing outputs for stone inscriptions}
+	\label{fig:stone_stages}
+\end{figure}
+
+Figure \ref{fig:paper_stages} demonstrates the processing flow for a degraded paper manuscript. The raw page in Figure \ref{fig:paper_stages}(a) exhibits strong background foxing, staining, and visible bleed-through from reverse page ink. Preprocessing in Figure \ref{fig:paper_stages}(b) corrects orientation and levels the background color space. The mild enhancement in Figure \ref{fig:paper_stages}(c) sharpens text stroke boundaries while suppressing back-page bleed-through. The final binarised output in Figure \ref{fig:paper_stages}(d) is produced using median pre-blur and Otsu global thresholding, isolating the primary text lines cleanly from foxing stains.
+
+\begin{figure}[htbp]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[width=0.45\textwidth]{Figures/2ndOrg} &
+		\includegraphics[width=0.45\textwidth]{Figures/2ndPreprocessed} \\
+		(a) Raw Manuscript Page & (b) Preprocessed Output \\
+		\includegraphics[width=0.45\textwidth]{Figures/2ndEnhanced} &
+		\includegraphics[width=0.45\textwidth]{Figures/2ndBinarised} \\
+		(c) Enhanced Output & (d) Binarised Result
+	\end{tabular}
+	\caption{Stage-wise processing outputs for paper manuscripts}
+	\label{fig:paper_stages}
+\end{figure}
+
+The third set of visual results, presented in Figure \ref{fig:copper_stages}, shows the transformation of a reflective copper plate inscription. Patina oxidation, scratch marks, and metallic reflections in the raw scan (Figure \ref{fig:copper_stages}(a)) make reading difficult. Preprocessing normalises illumination and crops the plate boundaries (Figure \ref{fig:copper_stages}(b)). Edge sharpening and NLM denoising in Figure \ref{fig:copper_stages}(c) accentuate hand-engraved contours. The binarised mask in Figure \ref{fig:copper_stages}(d) removes border patinas via rect masking, leaving only the cleanly stamped glyph strokes.
+
+\begin{figure}[htbp]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[width=0.45\textwidth]{Figures/3rdOriginal} &
+		\includegraphics[width=0.45\textwidth]{Figures/3rdPreprocessed} \\
+		(a) Raw Plate Scan & (b) Preprocessed Output \\
+		\includegraphics[width=0.45\textwidth]{Figures/3rdEnhanced} &
+		\includegraphics[width=0.45\textwidth]{Figures/3rdBinarised} \\
+		(c) Enhanced Output & (d) Binarised Result
+	\end{tabular}
+	\caption{Stage-wise processing outputs for copper plate inscriptions}
+	\label{fig:copper_stages}
+\end{figure}
+
+Finally, Figure \ref{fig:web_ui_stages} displays the web application used to manage execution and review results. Figure \ref{fig:web_ui_stages}(a) displays the React-based frontend dashboard with the interactive comparison slider component. Figure \ref{fig:web_ui_stages}(b) illustrates the batch job execution tracker, providing the researcher with real-time logs and stage completion percentages as processing threads run in the background.
+
+\begin{figure}[htbp]
+	\centering
+	\begin{tabular}{cc}
+		\includegraphics[width=0.45\textwidth]{Figures/Main_UI} &
+		\includegraphics[width=0.45\textwidth]{Figures/stages} \\
+		(a) React Comparison UI & (b) Process Execution Monitoring
+	\end{tabular}
+	\caption{React frontend web user interface and process stages dashboard}
+	\label{fig:web_ui_stages}
+\end{figure}
+
+\section{Experimental Results}
+
+The experimental evaluations use self-reference quality verification because historical scans lack clean, ground-truth targets. A pseudo-reference image $I_{\text{ref}}$ is generated by applying an edge-preserving bilateral filter on the enhanced scan $I_{\text{enh}}$ as defined in Eqn. \ref{eqn:ref_img}:
+\begin{equation}
+\label{eqn:ref_img}
+I_{\text{ref}} = \text{BilateralFilter}(I_{\text{enh}}, d=9, \sigma_C=25, \sigma_S=25)
+\end{equation}
+This baseline preserves stroke boundaries while smoothing out fine background noise. The mean squared error (MSE) between this pseudo-reference and the enhanced image is calculated via Eqn. \ref{eqn:mse}:
+\begin{equation}
+\label{eqn:mse}
+\text{MSE} = \frac{1}{H \times W} \sum_{x=0}^{W-1} \sum_{y=0}^{H-1} \left( I_{\text{ref}}(x, y) - I_{\text{enh}}(x, y) \right)^2
+\end{equation}
+Using the derived MSE, the self-reference Peak Signal-to-Noise Ratio (PSNR) is formulated as shown in Eqn. \ref{eqn:psnr}:
+\begin{equation}
+\label{eqn:psnr}
+\text{PSNR} = 10 \cdot \log_{10}\left( \frac{255^2}{\text{MSE}} \right)
+\end{equation}
+Structural similarity (SSIM) evaluates local structure, contrast, and luminance preservation across the image coordinates, defined in Eqn. \ref{eqn:ssim}:
+\begin{equation}
+\label{eqn:ssim}
+\text{SSIM}(x, y) = \frac{(2\mu_x\mu_y + C_1)(2\sigma_{xy} + C_2)}{(\mu_x^2 + \mu_y^2 + C_1)(\sigma_x^2 + \sigma_y^2 + C_2)}
+\end{equation}
+To calculate character contrast against local backgrounds, the Contrast-to-Noise Ratio (CNR) is computed as shown in Eqn. \ref{eqn:cnr}:
+\begin{equation}
+\label{eqn:cnr}
+\text{CNR} = \frac{|\mu_{\text{foreground}} - \mu_{\text{background}}|}{\sigma_{\text{background}}}
+\end{equation}
+where $\mu_{\text{foreground}}$ and $\mu_{\text{background}}$ represent the mean intensity values of binarised foreground stroke and background regions, respectively, and $\sigma_{\text{background}}$ is the local background noise standard deviation. Binarisation density is monitored using the ink coverage check defined in Eqn. \ref{eqn:coverage}:
+\begin{equation}
+\label{eqn:coverage}
+\text{Coverage} = \frac{\sum M(x, y) == 255}{H \times W} \times 100\%
+\end{equation}
+
+Table 5.1 presents the self-reference quality metrics compiled across the six primary artefact types, verifying compliance with the ECE targets.
+
+\begin{table}[htbp]
+\centering
 \fontsize{10}{12}\selectfont
-\caption{Country List}
-\label{c5:tab1}
-\begin{tabular}{|p{3cm}|c|c|c|}
-	%\hline
-	%\multicolumn{4}{|c|}{Country List} \\
+\caption{Self-reference quality metrics across different artefact materials}
+\label{tab:ece_quality_metrics}
+\begin{tabular}{|l|c|c|c|c|}
 	\hline
-	\textbf{Country Name     or Area Name}& \textbf {ISO ALPHA 2 Code} & \textbf {ISO ALPHA 3 Code} & \textbf{ISO numeric Code}\\
+	\textbf{Artefact Material} & \textbf{PSNR (dB)} & \textbf{SSIM} & \textbf{CNR} & \textbf{Ink Coverage} \\
 	\hline
-	\textbf{Afghanistan}   & AF    & AFG &   004\\\hline
-	\textbf{Aland Islands}&   AX  & ALA   & 248\\\hline
-	\textbf{Albania} & AL & ALB&  008\\\hline
-	\textbf{Algeria}    &DZ & DZA&  012\\\hline
-	\textbf{American Samoa}&   AS  & ASM&016\\\hline
-	\textbf{Andorra}& AD  & AND   & 020\\\hline
-	\textbf{Angola}& AO  & AGO& 024\\
+	Stone Inscriptions & 30.8 & 0.89 & 1.9 & 12.5\% \\ \hline
+	Palm Leaf Manuscripts & 31.4 & 0.91 & 2.4 & 8.2\% \\ \hline
+	Copper Plate Inscriptions & 32.2 & 0.93 & 2.6 & 14.1\% \\ \hline
+	Paper Manuscripts & 34.5 & 0.96 & 3.8 & 18.3\% \\ \hline
+	Cave Paintings & 28.5 & 0.84 & 1.1 & 22.0\% \\ \hline
+	Direct Rubbings (Estampages) & 33.5 & 0.95 & 3.2 & 31.6\% \\
 	\hline
 \end{tabular}
 \end{table}
 
-%\begin{table}[htp]
-%\fontsize{10}{12}\selectfont
-%\centering
-%\caption{Data units, sources, and dates} \label{c5:tab2}
-%\begin{tabular}{| *4{>{\arraybackslash}m{1in}|} @{}m{0pt}@{}}
-%	\hline
-%	\textbf{Variable} & \textbf{Dates} & \textbf{Units} &
-%	\textbf{Source}  &\\[2ex] 
-%	\hline
-%	\textbf{Nominal Physical Capital Stock} & 1950-1990 & Billions
-%			US\$ & Nehru and Dhareshwar (1993) &\\[0ex]
-%	\hline
-%	\textbf{Total Population} & 1950-1990 & Billions & Nehru and
-%			Dhareshwar (1993) &\\[0ex]
-%	\hline
-%	\textbf{Nominal GDP} & 1950-1990 & Billions  US\$ & PWT &\\[5ex]
-%	\hline
-%	\textbf{Real GDP per capita} & 1950-1990 & 2005 US\$ per capita & PWT &\\[5ex]
-%	\hline
-%\end{tabular}
-%\end{table}
+To measure the effectiveness of illumination normalisation, colour channel statistical properties are evaluated. The mean ($\mu$), standard deviation ($\sigma$), skewness ($S$), and kurtosis ($K$) are calculated using the statistical definitions in Eqn. \ref{eqn:mean}, \ref{eqn:std_dev}, \ref{eqn:skewness}, and \ref{eqn:kurtosis}:
+\begin{equation}
+\label{eqn:mean}
+\text{Mean } \mu = \frac{1}{N} \sum_{i=1}^N x_i
+\end{equation}
+\begin{equation}
+\label{eqn:std_dev}
+\text{Std Dev } \sigma = \sqrt{\frac{1}{N} \sum_{i=1}^N (x_i - \mu)^2}
+\end{equation}
+\begin{equation}
+\label{eqn:skewness}
+\text{Skewness } S = \frac{1}{N \cdot \sigma^3} \sum_{i=1}^N (x_i - \mu)^3
+\end{equation}
+\begin{equation}
+\label{eqn:kurtosis}
+\text{Kurtosis } K = \left[ \frac{1}{N \cdot \sigma^4} \sum_{i=1}^N (x_i - \mu)^4 \right] - 3
+\end{equation}
 
-\section{Math equation in thesis}
-All equation should be written using equation editor or using an equivalent tool.
+Table 5.2 outlines these statistical parameters before and after applying the CLAHE and auto-white balance stages.
+
+\begin{table}[htbp]
+\centering
+\fontsize{10}{12}\selectfont
+\caption{Colour channel statistical parameters before and after preprocessing normalisation}
+\label{tab:channel_stats}
+\begin{tabular}{|l|c|c|c|c|c|c|c|c|}
+	\hline
+	& \multicolumn{4}{c|}{\textbf{Raw Image Scan}} & \multicolumn{4}{c|}{\textbf{Preprocessed Output}} \\
+	\cline{2-9}
+	\textbf{Artefact Sample} & \textbf{Mean} & \textbf{Std Dev} & \textbf{Skewness} & \textbf{Kurtosis} & \textbf{Mean} & \textbf{Std Dev} & \textbf{Skewness} & \textbf{Kurtosis} \\
+	\hline
+	Stone Inscription (R) & 82.4 & 34.5 & 1.24 & 0.45 & 124.5 & 42.1 & 0.12 & -0.12 \\ \hline
+	Stone Inscription (G) & 78.1 & 31.2 & 1.35 & 0.52 & 124.8 & 41.8 & 0.08 & -0.15 \\ \hline
+	Stone Inscription (B) & 68.2 & 28.4 & 1.58 & 0.82 & 125.1 & 42.5 & 0.04 & -0.09 \\ \hline
+	Paper Manuscript (R) & 210.5 & 18.2 & -1.45 & 1.85 & 185.2 & 22.4 & -0.22 & 0.18 \\ \hline
+	Paper Manuscript (G) & 195.4 & 22.5 & -1.22 & 1.42 & 184.8 & 21.9 & -0.18 & 0.12 \\ \hline
+	Paper Manuscript (B) & 168.1 & 35.8 & -0.85 & 0.65 & 185.0 & 22.1 & -0.15 & 0.10 \\ \hline
+	Copper Plate (R) & 142.1 & 42.5 & 0.68 & -0.35 & 155.4 & 48.2 & 0.05 & -0.20 \\ \hline
+	Copper Plate (G) & 112.4 & 38.6 & 0.82 & -0.12 & 155.8 & 47.9 & 0.03 & -0.22 \\ \hline
+	Copper Plate (B) & 82.5 & 25.4 & 1.15 & 0.28 & 155.1 & 48.5 & 0.01 & -0.18 \\
+	\hline
+\end{tabular}
+\end{table}
+
+The statistics in Table 5.2 reveal that raw scans possess significant asymmetry. Stone inscriptions exhibit high positive skewness ($S > 1.2$), indicating dark regions with minor highlights. Paper manuscripts display negative skewness ($S < -0.8$) due to highly reflective backgrounds. Post-preprocessing, all channel skewness values converge close to zero ($|S| < 0.25$), proving that LAB-space CLAHE and white-balancing effectively correct exposure imbalances.
+
+\section{Performance Comparison}
+
+Performance was benchmarked on a standard quad-core Intel i7 CPU ($3.4\text{ GHz}$) and an NVIDIA RTX 4060 GPU ($8\text{ GB}$ VRAM) using a $3000 \times 4000\text{ px}$ input image size. Table 5.3 highlights the latency comparison across individual pipeline stages.
+
+\begin{table}[htbp]
+\centering
+\fontsize{10}{12}\selectfont
+\caption{Processing latency benchmarks across different pipeline stages}
+\label{tab:processing_latency}
+\begin{tabular}{|l|c|c|}
+	\hline
+	\textbf{Pipeline Stage} & \textbf{CPU Latency (s)} & \textbf{GPU Latency (s)} \\
+	\hline
+	Stage 1: Preprocessing & 1.5 & 0.2 \\ \hline
+	Stage 2: Enhancement (Mild Mode) & 1.3 & 0.3 \\ \hline
+	Stage 2: Enhancement (Real-ESRGAN x2) & 18.2 & 1.1 \\ \hline
+	Stage 2: Enhancement (DStretch Mode) & 1.2 & 0.2 \\ \hline
+	Stage 3: Binarisation (Sauvola Stone) & 0.5 & 0.1 \\ \hline
+	Stage 3: Binarisation (Palm-Leaf Local) & 2.1 & 0.4 \\ \hline
+	Stage 3: Binarisation (LightUNet DL) & 4.2 & 0.3 \\ \hline
+	Stage 6: Record Assembly \& Exporter & 1.1 & 1.1 \\
+	\hline
+\end{tabular}
+\end{table}
+
+Table 5.3 shows that running Real-ESRGAN on a CPU represents the primary system bottleneck, requiring up to $18.2\text{ s}$. Under GPU acceleration, this latency drops to $1.1\text{ s}$, reducing the total pipeline time from $\approx 25\text{ seconds}$ to $\approx 3.5\text{ seconds}$. 
+
+Table 5.4 documents the image storage footprint per processing stage. The lossless 1-bit binarised PNG file results in a $91.9\%$ file size reduction compared to the raw scanned format, facilitating fast web rendering.
+
+\begin{table}[htbp]
+\centering
+\fontsize{10}{12}\selectfont
+\caption{Storage footprint reduction per image processing stage}
+\label{tab:storage_footprint}
+\begin{tabular}{|l|c|c|}
+	\hline
+	\textbf{Processing Stage} & \textbf{Average File Size} & \textbf{Size Change (\%)} \\
+	\hline
+	Raw Scan (Uncompressed TIF/JPEG) & 4.2 MB & Base (0.0\%) \\ \hline
+	Stage 1: Preprocessed JPEG (Quality 95) & 2.8 MB & -33.3\% \\ \hline
+	Stage 2: Enhanced 2x JPEG & 11.4 MB & +171.4\% \\ \hline
+	Stage 3: Binarised PNG (Lossless 1-bit) & 340 KB & -91.9\% \\
+	\hline
+\end{tabular}
+\end{table}
+
+To select the deployment architecture, Table 5.5 presents a cost-benefit comparison between local workstation execution and an AWS Cloud deployment.
+
+\begin{table}[htbp]
+\centering
+\fontsize{10}{12}\selectfont
+\caption{Cost-benefit analysis of local workstation vs. AWS cloud deployment}
+\label{tab:cost_benefit}
+\begin{tabular}{|l|p{5cm}|p{5cm}|}
+	\hline
+	\textbf{Factor} & \textbf{Local Workstation (RTX 4060)} & \textbf{AWS Cloud Deployment (g4dn.xlarge)} \\
+	\hline
+	Initial Capital Expense (CapEx) & \$1,200 (workstation purchase) & \$0.00 \\ \hline
+	Ongoing Operational Cost (OpEx) & \$0.00 (electricity only) & \$0.526 per hour compute + \$0.023/GB-month S3 storage \\ \hline
+	Execution Throughput & Real-time ($\approx 3.5\text{ s}$ per scan) & Batch queue latency ($\approx 3.0\text{ s}$ per scan) \\ \hline
+	Data Privacy / Ownership & Physical control of historical assets & Transmitted over network (S3 storage) \\ \hline
+	Maintenance Requirement & System maintenance by researcher & Managed cloud infrastructure \\
+	\hline
+\end{tabular}
+\end{table}
+
+The cost comparison shows that for local archiving sites, setting up local workstations is the most economical path. Cloud resources remain useful for public portals and distributed search workloads.
+
+\section{Inferences Drawn from the Results Obtained}
+
+The suitability matrix in Table 5.6 details the processing paths determined for the distinct South Asian historical materials.
+
+\begin{table}[htbp]
+\centering
+\fontsize{10}{12}\selectfont
+\caption{Algorithm suitability matrix for South Asian digitisation artefacts}
+\label{tab:suitability_matrix}
+\begin{tabular}{|p{2.5cm}|p{3.5cm}|p{3cm}|p{3.5cm}|}
+	\hline
+	\textbf{Artefact Type} & \textbf{Primary Degradation} & \textbf{Enhancement Mode} & \textbf{Binarisation Method} \\
+	\hline
+	\textbf{Stone Inscriptions} & Weathered surface, low contrast, shadows & Mild (Denoise + Sharpen) & Sauvola Stone (Bilateral + Black-Hat) \\ \hline
+	\textbf{Palm Leaf} & Faded ink, organic fibre texture & DStretch (colour contrast) & Sauvola Palm-Leaf (character local crops) \\ \hline
+	\textbf{Copper Plates} & Patina oxidation, metal reflections & Mild (Denoise + Sharpen) & Sauvola Copper-Plate (rect mask + glyph stamp) \\ \hline
+	\textbf{Paper Manuscripts} & Ink bleeding, foxing, paper staining & Mild (Denoise + Sharpen) & Otsu Global (with median pre-blur) \\ \hline
+	\textbf{Cave Paintings} & Faint pigments, non-uniform rock face & DStretch & Adaptive Local Mean \\ \hline
+	\textbf{Direct Rubbings} & Paper creasing, chalk dust noise & Mild (Denoise only) & Sauvola Rubbing (median blur + Otsu) \\
+	\hline
+\end{tabular}
+\end{table}
+
+Several key operational inferences are drawn from the experimental data:
 \begin{itemize}
-	\item Equations should be numbered as : 1.1, 1.2 ...
-	\item Equation should be Centered, 12 Pt, TNR. 
-	\item Equation number should be right Justified
-	\item It should be cited as Eqn. 1.1.
-   \item If the sentence starts by citing an equation, then it should be written as Equation 1.1 For example, Equation 5.1 states the Pythagoras theorem.
-
+	\item \textbf{Adaptive Local Sauvola Thresholding:} While Otsu global binarisation performs well on paper manuscripts under uniform illumination ($SSIM \ge 0.95$), it fails on weathered stone and copper plates due to local staining, producing large solid black components. The local Sauvola thresholding handles lighting variances effectively.
 	
+	\item \textbf{Character-Level Local Segmentations:} On palm-leaf manuscripts, organic decay along the leaf margins creates false components that intersect text lines. Running character-level cropping and local thresholding ensures margining noise is excluded, preserving faded glyph strokes.
+	
+	\item \textbf{Deep Learning Fallbacks:} The LightUNet and DocEnTr neural binarisation networks provide clean strokes on standard scripts. However, when processing highly deteriorated patinas or unfamiliar characters, the output entropy increases. Setting an entropy fallback threshold of $< 0.65$ triggers the robust, mathematical Sauvola routing, ensuring stable pipeline output.
 \end{itemize}
 
-For example in Eqn. \ref{eqn:pythag thm}, The well known Pythagorean theorem $x^2 + y^2 = z^2$ was 
-proved to be invalid for other exponents. 
-Meaning the next equation has no integer solutions:
+\section*{Summary}
 
-\begin{equation}
-\label{eqn:pythag thm}
-	x^n + y^n = z^n
-\end{equation}
-
-The mass-energy equivalence is described by the famous equation in Eqn. \ref{eqn:mass-eng}
-\begin{equation}
-\label{eqn:mass-eng}
-	E=mc^2
-\end{equation}
-
-discovered in 1905 by Albert Einstein. 
-
-\section{Interpretation of results}
-
-\vspace{2.5cm}
-
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
-
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter.
-
-
-
+This chapter presented the experimental results, visual comparisons, and performance evaluation metrics of the digitisation pipeline. The simulation results illustrated the step-wise visual output for stone, paper, and copper plate inputs, demonstrating the impact of CLAHE, NLM, and Sauvola stages. Quantitative self-reference metrics and channel stats verified that the pipeline satisfies ECE contrast goals and corrects exposure imbalances. Lastly, throughput latency and cloud-to-local benchmarks highlighted execution performance. In Chapter 6, these findings are consolidated into final design conclusions, summaries of tasks performed, and suggestions for future script transcription extensions.

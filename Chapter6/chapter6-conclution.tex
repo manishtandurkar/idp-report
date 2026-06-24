@@ -1,20 +1,39 @@
 \chapter{Conclusion and Future Scope}
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter). But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph.
+
+Consolidation of the multi-artefact digitisation pipeline outlines the final system capabilities, operational learning outcomes, and future expansion pathways. Section 6.1 draws comprehensive conclusions from each design objective, highlighting quantitative signal improvements and storage footprint reductions. Section 6.2 discusses the technical constraints and limitations, delineating the future scope for active ancient script translation and large-scale cloud deployment. Finally, Section 6.3 details the core learning outcomes, summarizing the technical and soft skills acquired during the development process.
 
 \section{Conclusion}
-This chapter should not contain an introduction paragraph like other chapters. You can directly write conclusion of the work done under this section. Typically this section can have 3 to 4 paragraphs. 
 
-First paragraph should bring in the scenario of the project and every objective should be explained here.
+This project addresses the challenges of preserving degraded, weathered, or oxidized historical South Asian scan datasets (stone inscriptions, palm leaf manuscripts, copper plate inscriptions, paper manuscripts, cave paintings, and direct paper rubbings). The digitisation pipeline was designed and executed across three core objectives. The first objective established a robust image preprocessing framework that corrects EXIF rotation metadata, normalises lighting gradients using CIELAB CLAHE, balances chromaticity via Grey-World assumptions, and morphologically crops scanner margins. The second objective integrated edge-preserving smoothing and deep super-resolution models to reconstruct high-frequency stroke details. The third objective implemented material-specific Sauvola local binarisation and local character segmentations, consolidating outputs into structured research records (JSON and researcher PDF reports) for preservation.
 
-Second paragraph should say how the objectives are implemented and achieved.
+The design objectives were successfully translated into a decoupled, multi-tier web application using a FastAPI backend and a React frontend client. To prevent performance blocks during heavy image processing operations (such as Real-ESRGAN upscaling), the FastAPI server runs tasks asynchronously using a thread-pool executor. The React frontend provides researchers with interactive analysis tools, including a horizontal ComparisonSlider to visually inspect outputs in real time, and a ProgressBar to track thread execution progress. The sequential stage-wise architecture isolates each module (preprocessing, enhancement, binarisation, and assembly), ensuring intermediate results are non-destructively saved and can be inspected to prevent the propagation of exposure or noise errors.
 
-Last paragraph should draw the conclusions from each objective with quantitative results, performance improvement etc. 
+Quantitative evaluations in Chapter 5 verify that the pipeline meets all design targets. Preprocessing normalises illumination, reducing raw colour channel skewness from $|S| > 1.5$ to a symmetric $|S| < 0.25$. Image enhancement achieves high structural fidelity, with self-reference SSIM scores of $\ge 0.89$ on stone scans and $\ge 0.91$ on palm leaves, satisfying ECE quality targets. The binarisation stage reduces the digital storage footprint by $91.9\%$ (from 4.2 MB raw files to 340 KB lossless 1-bit PNGs), significantly lowering archival storage costs. Finally, local GPU execution on an RTX 4060 GPU achieves real-time execution throughput ($\approx 3.5\text{ seconds}$ per image), representing a highly cost-effective deployment strategy compared to ongoing cloud compute fees.
 
 \section{Future Scope}
-Briefly discuss the constraints and limitations of the project and state the possibilities of extending the work in future.
-\section{Learning Outcomes of the Project}
+
+Although the pipeline achieves robust preprocessing and binarisation results, several limitations present opportunities for future extensions:
 \begin{itemize}
-\item List the learning outcomes here
-\item List a minimum of 5 learning outcomes
+	\item \textbf{Upscaling Bottlenecks:} The deep generative upscaling model (Real-ESRGAN) represents the main system bottleneck, requiring up to $18.2\text{ s}$ under CPU execution. Optimizing model weights through tensor quantisation or leveraging dedicated tensor execution engines (ONNX, TensorRT) would reduce processing times.
+	
+	\item \textbf{Ancient Script Training Expansion:} While the OCR stage implements script detection (Devanagari vs. Tamil aspect ratio checks) and parallel Tesseract/EasyOCR ensemble routing, active text transcription remains limited. Future scope involves training patch-based Visual Transformer (DocEnTr) and OCR models on ancient scripts like Brahmi, Grantha, and ancient regional scripts.
+	
+	\item \textbf{Automated Translation Integrations:} Future versions can incorporate automated machine translation engines to translate binarised text directly into modern regional languages or English, providing researchers with immediate transcriptions.
+	
+	\item \textbf{Scalable Cloud Architectures:} For large-scale national archives, the REST API can be scaled into cloud-native microservices using Docker containers and Kubernetes clusters, utilizing AWS Auto Scaling to handle concurrent batch uploads.
 \end{itemize}
 
+\section{Learning Outcomes of the Project}
+
+The completion of this interdisciplinary project resulted in several technical and professional learning outcomes:
+\begin{itemize}
+	\item \textbf{Advanced Image Processing and Signal Theory:} Gained deep knowledge of spatial and frequency-domain transformations, mastering techniques like Contrast-Limited Adaptive Histogram Equalisation, fast non-local means denoising, Gabor filters orientation extraction, and FFT periodic noise removal.
+	
+	\item \textbf{Deep Learning Frameworks and Models:} Acquired hands-on experience in PyTorch by configuring and running inference on residual convolutional networks (Real-ESRGAN, LightUNet) and Transformer architectures (DocEnTr patch-ViT), including managing weight fallbacks and execution tiling.
+	
+	\item \textbf{Full-Stack Software Architecture:} Designed and developed a decoupled REST API using FastAPI and a React frontend, mastering asynchronous concurrency, thread pooling (`concurrent.futures`), and cached API hooks (TanStack Query).
+	
+	\item \textbf{Performance Optimization and Benchmarking:} Developed skills in benchmarking execution latency, profiling storage footprints, configuring GPU acceleration (CUDA), and conducting cloud-versus-local cost-benefit analyses.
+	
+	\item \textbf{Collaborative Development and Scientific Writing:} Strengthened team collaboration through version control (Git), modular project documentation, and systematic research report writing in LaTeX adhering to formal academic standards.
+\end{itemize}

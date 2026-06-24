@@ -1,19 +1,208 @@
 \chapter{Implementation of the Digitisation Pipeline}
 
-Every chapter should start with an introduction paragraph. This paragraph should brief about the flow of the chapter. This introduction can be limited within 4 to 5 sentences. The chapter heading should be appropriately modified (a sample heading is shown for this chapter).But don't start the introduction paragraph in the chapters like "This chapter deals with....". Instead you should bring in the highlights of the chapter in the introduction paragraph. 
+Implementation of the multi-artefact digitisation pipeline translates theoretical signal enhancement and binarisation logic into a functional, production-ready software system. Standardising the repository structure ensures non-destructive data flow by strictly separating read-only raw scans from intermediate outputs. Python processing modules encapsulate operations from image loading to PDF record generation, while an asynchronous backend architecture manages concurrency via FastAPI and thread-pool execution. Finally, a React-based frontend web interface equips researchers with interactive comparison and execution monitoring capabilities.
 
-\section{Contents of this chapter}
-This chapter should elaborate the following in detail.
-\begin{enumerate}
-\item Implementation details for hardware based projects
-\item Top level Design for software based projects
-\end{enumerate}
+\section{Software Directory Structure and Layout}
 
-You can add sections and sub sections to elaborate your project work done.
+The file structure of the digitisation workspace is organized to isolate original scans (treated as read-only assets) from derived files. This non-destructive storage design is implemented across the following directory structure:
 
-\vspace{0.75cm}
+\begin{tcolorbox}[colback=blue!5, colframe=blue!40, title=Project Directory Layout, fonttitle=\bfseries]
+\begin{verbatim}
+inscription-digitisation/
+├── data/
+│   ├── raw/                 # Original Scans (Read-Only)
+│   ├── preprocessed/        # Stage 1 Outputs (JPEG, Quality 95)
+│   ├── enhanced/            # Stage 2 Outputs (JPEG, Quality 95)
+│   ├── binarised/           # Stage 3 Outputs (PNG, Lossless)
+│   ├── thumbnails/          # Cache for React UI (JPEG, Max 400px width)
+│   └── records/             # Stage 6 Output JSON Records
+├── src/
+│   ├── preprocess.py        # Stage 1 execution code
+│   ├── enhance.py           # Stage 2 execution code
+│   ├── binarise.py          # Stage 3 execution code
+│   ├── filters.py           # Custom Gabor, Sobel, and FFT implementations
+│   ├── ocr.py               # OCR engine routing (design details only)
+│   ├── analysis.py          # ECE channel skewness/kurtosis calculation
+│   ├── metrics.py           # ECE quality analytics verification suite
+│   ├── record.py            # Record assembly and researcher PDF generator
+│   └── pipeline.py          # Orchestrates stages 1 through 6
+├── api/
+│   ├── main.py              # FastAPI application server
+│   ├── jobs.py              # Thread-safe job store
+│   └── pipeline.py          # Backend pipeline adapter
+└── web/                     # React frontend root
+\end{verbatim}
+\end{tcolorbox}
 
- \textbf{The chapters should not end with figures, instead bring the paragraph explaining about the figure at the end followed by a summary paragraph.}
+\section{Top-Level Software Design and Architecture}
 
-After elaborating the various sections of the chapter (From Chapter 2 onwards), a summary paragraph should be written discussing the highlights of that particular chapter. This summary paragraph should not be numbered separately. This paragraph should connect the present chapter to the next chapter. 
+The pipeline is implemented as a decoupled, multi-tier software system consisting of a React client, a FastAPI web server, and a modular Python processing core. The design focuses on asynchronous job management and thread-safe batch execution, preventing resource exhaustion during intensive image enhancement tasks. Figure \ref{fig:top_level_design} presents the architectural layout and component interactions.
 
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    block/.style={rectangle, draw=blue!70, fill=blue!5, thick, rounded corners, minimum width=4.8cm, minimum height=1.1cm, align=center, font=\small},
+    blocksmall/.style={rectangle, draw=green!70, fill=green!5, thick, rounded corners, minimum width=3.2cm, minimum height=1.1cm, align=center, font=\small},
+    arrow/.style={thick, ->, >=stealth}
+]
+    % Nodes
+    \node (client) [block, fill=teal!10, draw=teal!70] {\textbf{React Frontend Client} \\ (web/src/)};
+    \node (api) [block, below of=client, yshift=-0.2cm, fill=orange!10, draw=orange!70] {\textbf{FastAPI REST API} \\ (api/main.py)};
+    \node (jobstore) [blocksmall, right of=api, xshift=3.2cm, fill=yellow!10, draw=yellow!70] {\textbf{In-Memory Job Store} \\ (api/jobs.py)};
+    \node (adapter) [block, below of=api, yshift=-0.2cm, fill=purple!10, draw=purple!70] {\textbf{Pipeline Adapter} \\ (api/pipeline.py)};
+    \node (core) [block, below of=adapter, yshift=-0.2cm, fill=blue!5, draw=blue!70] {\textbf{Python Processing Core} \\ (src/pipeline.py)};
+    \node (data) [blocksmall, left of=adapter, xshift=-3.2cm, fill=green!10, draw=green!70] {\textbf{File System Storage} \\ (data/raw/, data/records/)};
+
+    % Arrows
+    \draw [arrow] (client) -- node[right, font=\scriptsize] {HTTP GET/POST (JSON)} (api);
+    \draw [arrow] (api) -- node[above, font=\scriptsize] {Job Registry} (jobstore);
+    \draw [arrow] (api) -- node[right, font=\scriptsize] {ThreadPool Task} (adapter);
+    \draw [arrow] (adapter) -- node[right, font=\scriptsize] {Orchestrate} (core);
+    \draw [arrow] (core) -| node[above, pos=0.3, font=\scriptsize] {Read/Write Scans} (data);
+    \draw [arrow] (api) -| node[above, pos=0.3, font=\scriptsize] {Serve Previews} (data);
+\end{tikzpicture}
+\caption{Top-Level Software Architecture and Component Interaction}
+\label{fig:top_level_design}
+\end{figure}
+
+The client tier (React Frontend) initiates batch processing requests and queries execution states. The application tier (FastAPI Backend) maps endpoints to processing calls, routes images, and manages a thread pool. A dedicated file structure preserves raw scan integrity while storing output stages.
+
+\section{Stage 1: Preprocessing Module (preprocess.py)}
+
+The preprocessing module handles image acquisition normalisation. It corrects EXIF-based rotation metadata, normalises global exposures, adjusts white balances, and clips background margins.
+
+\begin{itemize}
+	\item \texttt{load\_image(path: str) -> np.ndarray}:
+	Reads the image file at the specified location using \texttt{PIL.Image.open()}. It applies \texttt{ImageOps.exif\_transpose()} to parse and correct EXIF orientation flags (values 1–8), converting the output to an upright NumPy array. The colour space is converted from RGB to BGR for compatibility with OpenCV.
+	
+	\item \texttt{normalise\_brightness(img: np.ndarray) -> np.ndarray}:
+	Converts the BGR image to the CIELAB colour space. It applies CLAHE to the $L^*$ (Lightness) channel using an OpenCV instance created via \texttt{cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))}, merges the channels, and converts the result back to BGR.
+	
+	\item \texttt{auto\_white\_balance(img: np.ndarray) -> np.ndarray}:
+	Calculates the mean intensity for each of the BGR channels ($\mu_R, \mu_G, \mu_B$) and the overall mean intensity ($\mu_{\text{overall}}$). It derives a scale factor $S_c = \mu_{\text{overall}} / \mu_c$ for each channel, multiplies the channel pixel values by their respective scale factors, and clips the resulting array to the $[0, 255]$ range.
+	
+	\item \texttt{\_crop\_borders\_with\_metadata(img: np.ndarray, threshold: int = 10) -> Tuple[np.ndarray, Tuple[int, int, int, int]]}:
+	Calculates a binary mask of pixels that fall within the range $(10, 245)$ in the grayscale representation. It applies a morphological closing operation using a $5 \times 5$ rectangular kernel to connect disjoint strokes, extracts the bounding box coordinates $(x, y, w, h)$ of the non-zero region using \texttt{cv2.boundingRect()}, and crops the image. If the crop box is invalid ($w < 0.25 W$ or $h < 0.25 H$), the crop is rejected, and the original image boundaries are returned.
+	
+	\item \texttt{preprocess(img\_path: str, output\_path: str) -> np.ndarray}:
+	Orchestrates the sequential execution of \texttt{load\_image}, \texttt{normalise\_brightness}, \texttt{auto\_white\_balance}, and \texttt{\_crop\_borders\_with\_metadata}. The preprocessed image is saved to the destination path as a JPEG with a quality compression of 95.
+\end{itemize}
+
+\section{Stage 2: Signal Enhancement Module (enhance.py)}
+
+The enhancement module applies spatial and deep-learning filters to reconstruct text strokes and suppress background textures.
+
+\begin{itemize}
+	\item \texttt{denoise(img: np.ndarray, strength: int = 10) -> np.ndarray}:
+	Calls the OpenCV method \texttt{cv2.fastNlMeansDenoisingColored} with template window size set to 7 and search window size set to 21 to remove high-frequency background noise.
+	
+	\item \texttt{dstretch(img: np.ndarray) -> np.ndarray}:
+	Performs decorrelation stretching on the input image. It calculates the covariance matrix of the color channels, performs eigendecomposition, and scales the variance of the components. If the maximum eigenvalue of the covariance matrix is $< 10^{-8}$, it returns the input unchanged to prevent division-by-zero errors.
+	
+	\item \texttt{enhance\_with\_realesrgan(img: np.ndarray, scale: int = 2, model\_path: Path = DEFAULT\_MODEL\_PATH) -> np.ndarray}:
+	Loads the \texttt{RRDBNet} model architecture weights and runs inference. If the model weights are missing at the default path, it downloads them from GitHub to \texttt{models/weights/RealESRGAN\_x4plus.pth}. The model configuration is cached in memory using Python's \texttt{@lru\_cache(maxsize=2)} decorator to avoid reload latency. The image is split into $400 \times 400$ pixel tiles with $10\text{ px}$ overlap padding, processed, and merged to prevent GPU memory exhaustions.
+	
+	\item \texttt{enhance(img\_path: str, output\_path: str, use\_dstretch: bool = False, mode: str = "auto") -> np.ndarray}:
+	Orchestrates the enhancement routing logic. If the identified document type is \texttt{"palm\_leaf"} or the boolean flag \texttt{use\_dstretch} is enabled, it routes the image through \texttt{dstretch}. If the image is a low-resolution stone scan ($< 500\text{ px}$), it runs \texttt{enhance\_with\_realesrgan}. For high-contrast rubbings or standard stone scans, it defaults to a mild enhancement mode (NLM denoising followed by unsharp masking).
+\end{itemize}
+
+\section{Stage 3: Binarisation Module (binarise.py)}
+
+The binarisation module implements material-specific thresholding pipelines and deep learning options.
+
+\subsection{Document Classification and Rubbing Detection}
+\begin{itemize}
+	\item \texttt{detect\_document\_type(img: np.ndarray, img\_path: str | Path | None = None) -> str}:
+	Scans the file path string for keywords (\texttt{"stone", "palm", "metal"}). If no keyword is found, it calculates the mean saturation and hue in the HSV color space. An image is classified as \texttt{"palm\_leaf"} if mean saturation $> 75$, mean hue is within $[8, 30]$, and the aspect ratio is $> 1.8$. It is classified as \texttt{"metal\_plate"} if the Laplacian variance is $> 25000$. Otherwise, it defaults to \texttt{"stone"}.
+	
+	\item \texttt{detect\_rubbing(img: np.ndarray) -> bool}:
+	Identifies paper rubbings by their characteristic white-chalk-on-dark-ink bimodal contrast profile. It returns \texttt{True} if mean saturation $> 35$, mean local standard deviation $> 18$, and global standard deviation $> 50$, with corner brightness $< 200$.
+\end{itemize}
+
+\subsection{Specialized Thresholding Pipelines}
+\begin{itemize}
+	\item \texttt{binarise\_stone(img: np.ndarray) -> np.ndarray}:
+	For images $\ge 1500\text{ px}$: applies a median blur (kernel size equal to $1\%$ of the shorter image dimension), runs Sauvola with a dynamic window and $k=0.25$, closes gaps using a $3\times3$ kernel, removes small connected components (dust noise), and clears borders via an edge-based flood fill. For images $< 1500\text{ px}$, it uses a bilateral filter ($d=9, \sigma=50$) followed by Sauvola.
+	
+	\item \texttt{binarise\_palm\_leaf(img: np.ndarray) -> np.ndarray}:
+	Implements character-level local segmentation: generates a rough mask on the R-channel, dilates to identify bounding boxes around characters, crops each character region, and applies local Sauvola on the crops using a dynamic window:
+	\begin{equation}
+	W_{\text{crop}} = \max\left(7, \min\left(31, \text{crop\_side} // 3\right)\right)
+	\end{equation}
+	The thresholded character segments are then stamped back onto a black canvas.
+	
+	\item \texttt{binarise\_copper\_plate(img: np.ndarray) -> np.ndarray}:
+	Thresholds the background ($> 180$) to segment the copper plate rectangle. It insets the crop boundaries by 6 pixels to remove border patinas, runs bilateral filtering, applies Sauvola ($W=31, k=0.12$), and filters out components touching the bounding box edge.
+	
+	\item \texttt{binarise\_rubbing(img: np.ndarray) -> np.ndarray}:
+	Applies a median blur with a large kernel size ($K_{\text{size}}=13$) to remove paper grain textures, followed by Otsu global thresholding.
+\end{itemize}
+
+\subsection{Deep Learning Architectures}
+The module implements two neural network classes in PyTorch:
+\begin{itemize}
+	\item \texttt{\_LightUNet(nn.Module)}: Consists of 3 contracting convolutions ($32 \rightarrow 64 \rightarrow 128 \rightarrow 256$ channels), skip connections, and a Sigmoid classifier.
+	\item \texttt{\_DocEnTr(nn.Module)}: Implements a patch-based Visual Transformer (ViT) encoder ($8 \times 8$ patch size, embedding dimension 256, 4 transformer layers, 8 attention heads), a linear projection layer, and a 3-layer CNN decoder.
+	\item \texttt{Fallback Routing}: The methods \texttt{binarise\_unet} and \texttt{binarise\_docentr} run inference on the models. The binarisation certainty is checked using binary entropy. If the entropy certainty is $< 0.65$ or model weights are missing, the system falls back to the Sauvola pipeline.
+\end{itemize}
+
+\section{Stage 4: OCR Routing Module Design (ocr.py)}
+
+The script detection and ensemble framework is structured as follows:
+
+\begin{itemize}
+	\item \texttt{detect\_script(img: np.ndarray) -> str}:
+	Measures the aspect ratio of connected component bounding boxes on the Otsu binary mask. If the median aspect ratio is $< 0.7$ (tall characters with horizontal top lines), it classifies the script as \texttt{"devanagari"}; otherwise, it defaults to \texttt{"tamil"}.
+	
+	\item \texttt{ocr\_ensemble(img: np.ndarray, script: str) -> dict}:
+	Configures Tesseract (\texttt{--oem 1 --psm 6}) and EasyOCR (\texttt{detail=1}) to run in parallel. It selects the text block with the highest average word confidence score, merges the bounding boxes, removes duplicate boxes by position, and groups words into lines based on their vertical overlap:
+	\begin{equation}
+	\Delta y \le \max\left(0.6 \cdot H_{\text{line}}, 8\right)
+	\end{equation}
+\end{itemize}
+
+\section{Stage 6: Record Assembly \& Exporter Module (record.py)}
+
+The record module compiles metadata and generates reports.
+
+\begin{itemize}
+	\item \texttt{assemble\_record(...) -> dict}:
+	Consolidates the output paths, metadata fields (collection, accessions, material), line-level transcription confidences, and ECE quality metrics into a single JSON record. It generates sequential project IDs (\texttt{INS-YYYY-NNNN}) by scanning the contents of \texttt{data/records/}.
+	
+	\item \texttt{export\_pdf(record: dict, output\_dir: str) -> str}:
+	Uses \texttt{fpdf2} to construct a structured report containing a metadata table, a side-by-side comparison layout showing the original and enhanced images, the transcription text block with the engine used, the calculated ECE quality metrics (PSNR, SSIM, CNR, coverage), and a formatted citation string.
+\end{itemize}
+
+\section{Web stack and API System Design}
+
+The system runs on a React + FastAPI stack, using Python's multithreading to manage batch processing.
+
+\subsection{Backend REST API (api/main.py)}
+The backend server runs on FastAPI and exposes the following endpoints:
+\begin{itemize}
+	\item \texttt{GET /api/images}: Scans the \texttt{data/raw/} directory and returns a list of raw image records. It generates collection IDs by replacing folder slashes with double underscores: \texttt{collection\_\_subfolder\_\_filename.jpg}.
+	
+	\item \texttt{GET /api/images/\{id\}/thumbnail}: Checks for a cached thumbnail in \texttt{data/thumbnails/}. If missing, it generates a $400\text{ px}$ width preview image, caches it, and returns the file.
+	
+	\item \texttt{POST /api/process}: Accepts a JSON body containing a list of image IDs and pipeline stages to execute. It pushes a job to the thread store and immediately returns a unique Job ID.
+	
+	\item \texttt{GET /api/jobs/\{id\}}: Returns status updates (\texttt{pending, running, completed, failed}) and step progress logs.
+\end{itemize}
+The pipeline stages are executed asynchronously using a \texttt{concurrent.futures.ThreadPoolExecutor} instance with a pool size equal to \texttt{num\_cores}, keeping the API responsive during heavy execution tasks.
+
+\subsection{Frontend Client (web/src/)}
+The React 19 single-page application uses TanStack Query v5 to interact with the backend API:
+\begin{itemize}
+	\item \texttt{useImages()}: A React hook that fetches and caches the list of raw image records.
+	
+	\item \texttt{useJob(jobId)}: A React hook that polls the backend status endpoint at 1-second intervals when a job is active to update progress indicators.
+	
+	\item \texttt{ComparisonSlider}: An interactive UI component that overlay-renders the original and enhanced/binarised images, allowing the researcher to slide horizontally to compare details.
+	
+	\item \texttt{ProgressBar}: Renders the current stage, percentage completion, and live terminal logs from the active thread execution.
+\end{itemize}
+
+\section*{Summary}
+
+This chapter detailed the software implementation and code layout of the digitisation pipeline modules. The directory organization has been defined, highlighting the isolation of read-only raw scans. The preprocess, enhance, binarise, ocr, and record scripts have been detailed along with their core function signatures. The backend FastAPI REST endpoints, thread pooling execution, and React hooks and UI elements (ComparisonSlider, ProgressBar) represent the operational layers. With this implementation framework, Chapter 5 reports the experimental results, image quality metrics, and performance benchmarks.
