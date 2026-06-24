@@ -274,6 +274,8 @@
 %} % Use \thenumtitlelines to know the count value
 
 %%%%%% Title Page %%%%%%%%%%%
+\newif\ifgreenbackground
+\greenbackgroundtrue
 \definecolor{coversheetgreen}{RGB}{170,211,177}
 \renewcommand*{\maketitle}{%
 \begin{titlepage}
@@ -286,9 +288,11 @@
   {\Large\bfseries Submitted by,\unskip\strut\par}
  \end{center}
 \else
+\ifgreenbackground
 \begin{tikzpicture}[remember picture, overlay]
   \fill[coversheetgreen] (current page.south west) rectangle (current page.north east);
 \end{tikzpicture}
+\fi
 \begin{tikzpicture}[remember picture, overlay]
   \draw[line width = 4pt] ($(current page.north west) + (0.75in,-0.75in)$) rectangle ($(current page.south east) + (-0.75in,0.75in)$);
 \end{tikzpicture}
