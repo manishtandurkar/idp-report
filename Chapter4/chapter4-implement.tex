@@ -15,7 +15,7 @@ inscription-digitisation/
 │   ├── enhanced/            # Stage 2 Outputs (JPEG, Quality 95)
 │   ├── binarised/           # Stage 3 Outputs (PNG, Lossless)
 │   ├── thumbnails/          # Cache for React UI (JPEG, Max 400px width)
-│   └── records/             # Stage 6 Output JSON Records
+│   └── records/             # Stage 5 Output JSON Records
 ├── src/
 │   ├── preprocess.py        # Stage 1 execution code
 │   ├── enhance.py           # Stage 2 execution code
@@ -47,12 +47,12 @@ The pipeline is implemented as a decoupled, multi-tier software system consistin
     arrow/.style={thick, ->, >=stealth}
 ]
     % Nodes
-    \node (client) [block, fill=teal!10, draw=teal!70] {\textbf{React Frontend Client} \\ (web/src/)};
-    \node (api) [block, below of=client, yshift=-0.2cm, fill=orange!10, draw=orange!70] {\textbf{FastAPI REST API} \\ (api/main.py)};
-    \node (jobstore) [blocksmall, right of=api, xshift=3.2cm, fill=yellow!10, draw=yellow!70] {\textbf{In-Memory Job Store} \\ (api/jobs.py)};
-    \node (adapter) [block, below of=api, yshift=-0.2cm, fill=purple!10, draw=purple!70] {\textbf{Pipeline Adapter} \\ (api/pipeline.py)};
-    \node (core) [block, below of=adapter, yshift=-0.2cm, fill=blue!5, draw=blue!70] {\textbf{Python Processing Core} \\ (src/pipeline.py)};
-    \node (data) [blocksmall, left of=adapter, xshift=-3.2cm, fill=green!10, draw=green!70] {\textbf{File System Storage} \\ (data/raw/, data/records/)};
+    \node (client) [block, fill=teal!10, draw=teal!70] {React Frontend Client \\ (web/src/)};
+    \node (api) [block, below of=client, yshift=-0.2cm, fill=orange!10, draw=orange!70] {FastAPI REST API \\ (api/main.py)};
+    \node (jobstore) [blocksmall, right of=api, xshift=3.2cm, fill=yellow!10, draw=yellow!70] {In-Memory Job Store \\ (api/jobs.py)};
+    \node (adapter) [block, below of=api, yshift=-0.2cm, fill=purple!10, draw=purple!70] {Pipeline Adapter \\ (api/pipeline.py)};
+    \node (core) [block, below of=adapter, yshift=-0.2cm, fill=blue!5, draw=blue!70] {Python Processing Core \\ (src/pipeline.py)};
+    \node (data) [blocksmall, left of=adapter, xshift=-3.2cm, fill=green!10, draw=green!70] {File System Storage \\ (data/raw/, data/records/)};
 
     % Arrows
     \draw [arrow] (client) -- node[right, font=\scriptsize] {HTTP GET/POST (JSON)} (api);
@@ -162,7 +162,7 @@ The script detection and ensemble framework is structured as follows:
 	\end{equation}
 \end{itemize}
 
-\section{Stage 6: Record Assembly \& Exporter Module (record.py)}
+\section{Stage 5: Record Assembly \& Exporter Module (record.py)}
 
 The record module compiles metadata and generates reports.
 

@@ -13,23 +13,23 @@ The CS/IT team owns the end-to-end software pipeline from raw image ingestion to
 \subsubsection{Responsibilities and Deliverables}
 
 \begin{itemize}
-	\item \textbf{Preprocessing stage:} Implementation of image normalisation, white balance correction, border cropping, and orientation handling (\texttt{src/preprocess.py}). This ensures consistent baseline quality before AI processing.
+	\item Preprocessing stage: Implementation of image normalisation, white balance correction, border cropping, and orientation handling (\texttt{src/preprocess.py}). This ensures consistent baseline quality before AI processing.
 	
-	\item \textbf{AI enhancement stage:} Development of super-resolution via Real-ESRGAN, denoising, sharpening, and artefact-specific processing chains (\texttt{src/enhance.py}). Owns all neural network inference and model weight management.
+	\item AI enhancement stage: Development of super-resolution via Real-ESRGAN, denoising, sharpening, and artefact-specific processing chains (\texttt{src/enhance.py}). Owns all neural network inference and model weight management.
 	
-	\item \textbf{Binarisation stage:} Implementation of Sauvola, Otsu, and adaptive thresholding methods, plus post-processing morphological operations (\texttt{src/binarise.py}).
+	\item Binarisation stage: Implementation of Sauvola, Otsu, and adaptive thresholding methods, plus post-processing morphological operations (\texttt{src/binarise.py}).
 	
-	\item \textbf{Optical Character Recognition:} Ensemble OCR pipeline combining Tesseract and EasyOCR with confidence thresholding and alignment-based result merging (\texttt{src/ocr.py}). Supports Tamil, Sanskrit, Kannada, Telugu, Malayalam, and Devanagari scripts.
+	\item Optical Character Recognition: Ensemble OCR pipeline combining Tesseract and EasyOCR with confidence thresholding and alignment-based result merging (\texttt{src/ocr.py}). Supports Tamil, Sanskrit, Kannada, Telugu, Malayalam, and Devanagari scripts.
 	
-	\item \textbf{Translation layer (Phase 2):} Architected model selection using Helsinki-NLP OPUS-MT and LLM fallback for classical texts; deferred implementation (\texttt{src/translate.py}).
+	\item Translation layer (Phase 2): Architected model selection using Helsinki-NLP OPUS-MT and LLM fallback for classical texts; deferred implementation (\texttt{src/translate.py}).
 	
-	\item \textbf{Record assembly and export:} JSON-based structured record format with full metadata, PDF export via fpdf2, and storage orchestration (\texttt{src/record.py}).
+	\item Record assembly and export: JSON-based structured record format with full metadata, PDF export via fpdf2, and storage orchestration (\texttt{src/record.py}).
 	
-	\item \textbf{Pipeline orchestration:} Central orchestrator managing stage-by-stage execution, error handling, and progress tracking (\texttt{src/pipeline.py}).
+	\item Pipeline orchestration: Central orchestrator managing stage-by-stage execution, error handling, and progress tracking (\texttt{src/pipeline.py}).
 	
-	\item \textbf{Web backend:} FastAPI server providing REST endpoints for image listing, batch processing, job polling, and results retrieval (\texttt{api/main.py}, \texttt{api/jobs.py}).
+	\item Web backend: FastAPI server providing REST endpoints for image listing, batch processing, job polling, and results retrieval (\texttt{api/main.py}, \texttt{api/jobs.py}).
 	
-	\item \textbf{Web frontend:} React 19 + Vite single-page application with interactive image gallery, before/after comparison slider, transcription display, and export functionality (\texttt{web/src/}).
+	\item Web frontend: React 19 + Vite single-page application with interactive image gallery, before/after comparison slider, transcription display, and export functionality (\texttt{web/src/}).
 \end{itemize}
 
 \subsection{Electronics and Communication Engineering (ECE)}
@@ -38,7 +38,7 @@ The ECE team brings signal processing rigour to image processing stages, charact
 
 \subsubsection{Contributions}
 
-\textbf{Contribution 1 — Noise characterisation and modelling (\texttt{docs/noise\_analysis\_report.pdf}):}
+Contribution 1 — Noise characterisation and modelling (\texttt{docs/noise\_analysis\_report.pdf}):
 
 ECE profiles noise types across all five artefact categories:
 \begin{itemize}
@@ -50,17 +50,17 @@ ECE profiles noise types across all five artefact categories:
 
 Per-artefact noise profiles inform denoising strength selection: stone inscriptions (Gaussian + salt-and-pepper, denoising strength=10), palm leaf manuscripts (Gaussian + JPEG, strength=15), copper plates (specular reflectivity + Gaussian, strength=8).
 
-\textbf{Contribution 2 — Custom filter design (\texttt{src/filters.py}):}
+Contribution 2 — Custom filter design (\texttt{src/filters.py}):
 
 \begin{itemize}
-	\item \textbf{Gabor filter bank:} Bank of 24 oriented spatial frequency filters (3 frequencies × 8 orientations) to decompose inscription images into oriented texture components, enabling character-background separation independent of intensity.
+	\item Gabor filter bank: Bank of 24 oriented spatial frequency filters (3 frequencies × 8 orientations) to decompose inscription images into oriented texture components, enabling character-background separation independent of intensity.
 	
-	\item \textbf{Directional edge enhancement:} Orientation-selective sharpening that enhances carving edges at specified angles (e.g., vertical strokes in palm leaf characters).
+	\item Directional edge enhancement: Orientation-selective sharpening that enhances carving edges at specified angles (e.g., vertical strokes in palm leaf characters).
 	
-	\item \textbf{FFT-based periodic noise removal:} Frequency-domain notch filtering to suppress scanner artefacts while preserving text content (broadband).
+	\item FFT-based periodic noise removal: Frequency-domain notch filtering to suppress scanner artefacts while preserving text content (broadband).
 \end{itemize}
 
-\textbf{Contribution 3 — Colour channel and histogram analysis (\texttt{src/analysis.py}):}
+Contribution 3 — Colour channel and histogram analysis (\texttt{src/analysis.py}):
 
 Statistical characterisation of colour distributions:
 \begin{itemize}
@@ -69,18 +69,18 @@ Statistical characterisation of colour distributions:
 	\item Before/after histogram visualisations for report and paper figures.
 \end{itemize}
 
-\textbf{Contribution 4 — Image quality metrics (\texttt{src/metrics.py}):}
+Contribution 4 — Image quality metrics (\texttt{src/metrics.py}):
 
 Development of the evaluation framework with four key metrics:
 
 \begin{itemize}
-	\item \textbf{Peak Signal-to-Noise Ratio (PSNR):} Quantifies fidelity of enhanced image vs. original. Target: $\geq 30$ dB (imperceptible loss).
+	\item Peak Signal-to-Noise Ratio (PSNR): Quantifies fidelity of enhanced image vs. original. Target: $\geq 30$ dB (imperceptible loss).
 	
-	\item \textbf{Structural Similarity Index (SSIM):} Measures preservation of image structure (edges, contrast). Target: $\geq 0.85$ (good structure retention).
+	\item Structural Similarity Index (SSIM): Measures preservation of image structure (edges, contrast). Target: $\geq 0.85$ (good structure retention).
 	
-	\item \textbf{Contrast-to-Noise Ratio (CNR):} Quantifies text-to-background contrast relative to background noise. Directly correlates with OCR accuracy.
+	\item Contrast-to-Noise Ratio (CNR): Quantifies text-to-background contrast relative to background noise. Directly correlates with OCR accuracy.
 	
-	\item \textbf{Edge sharpness:} Laplacian variance to verify that super-resolution maintains crisp character edges without over-smoothing.
+	\item Edge sharpness: Laplacian variance to verify that super-resolution maintains crisp character edges without over-smoothing.
 \end{itemize}
 
 Automatic per-image quality scoring integrated into the pipeline ensures every processed record is validated against objective criteria.
@@ -91,7 +91,7 @@ The IEM team owns operational and organisational aspects: project scheduling, wo
 
 \subsubsection{Contributions}
 
-\textbf{Contribution 1 — Project management and scheduling (\texttt{docs/project\_plan.xlsx}):}
+Contribution 1 — Project management and scheduling (\texttt{docs/project\_plan.xlsx}):
 
 Weekly sprint planning, Gantt chart, task tracking, and risk register identifying:
 \begin{itemize}
@@ -101,42 +101,42 @@ Weekly sprint planning, Gantt chart, task tracking, and risk register identifyin
 	\item \textit{Quality risk}: OCR accuracy falling below 70\% on heavily degraded artefacts.
 \end{itemize}
 
-\textbf{Contribution 2 — Digitisation workflow optimisation (\texttt{docs/workflow\_analysis.pdf}):}
+Contribution 2 — Digitisation workflow optimisation (\texttt{docs/workflow\_analysis.pdf}):
 
 Value stream mapping identifying bottlenecks:
 \begin{itemize}
 	\item Preprocessing: 0.5 seconds/image (negligible)
 	\item Enhancement: 2 seconds/image (GPU-dependent)
 	\item Binarisation: 0.3 seconds/image
-	\item \textbf{OCR: 6 seconds/image (bottleneck — 3× slower than enhancement)}
+	\item OCR: 6 seconds/image (bottleneck — 3× slower than enhancement)
 	\item Record assembly: 0.2 seconds/image
 \end{itemize}
 
 Throughput analysis: current configuration processes \textit{10 images/minute} on a single GPU. Parallelisation strategies (multi-GPU, async job queueing) are documented for scaling to 1,000,000 records.
 
-\textbf{Contribution 3 — Cost-benefit and scalability analysis (\texttt{docs/cost\_benefit\_analysis.pdf}):}
+Contribution 3 — Cost-benefit and scalability analysis (\texttt{docs/cost\_benefit\_analysis.pdf}):
 
 Economic justification and scaling models:
 \begin{itemize}
-	\item \textbf{Cost per inscription}: GPU compute (\$0.12/image on AWS), storage (\$0.03/image), total infrastructure \$0.15/image.
-	\item \textbf{Manual transcription alternative}: Expert manual transcription costs \$2–5/inscription, requires 15–20 minutes per image.
-	\item \textbf{ROI:} Breakeven at 20 inscriptions; digitisation becomes economically superior beyond that threshold.
-	\item \textbf{Scalability}: 100 images (1 day), 10,000 images (100 days), 1,000,000 images (3 years on 10 GPUs).
+	\item Cost per inscription: GPU compute (\$0.12/image on AWS), storage (\$0.03/image), total infrastructure \$0.15/image.
+	\item Manual transcription alternative: Expert manual transcription costs \$2–5/inscription, requires 15–20 minutes per image.
+	\item ROI: Breakeven at 20 inscriptions; digitisation becomes economically superior beyond that threshold.
+	\item Scalability: 100 images (1 day), 10,000 images (100 days), 1,000,000 images (3 years on 10 GPUs).
 \end{itemize}
 
-\textbf{Contribution 4 — Stakeholder documentation and impact assessment (\texttt{docs/user\_guide.pdf}, \texttt{docs/impact\_statement.pdf}):}
+Contribution 4 — Stakeholder documentation and impact assessment (\texttt{docs/user\_guide.pdf}, \texttt{docs/impact\_statement.pdf}):
 
 \begin{itemize}
-	\item \textbf{User guide}: Non-technical instructions for museum curators, library staff, and heritage researchers to upload images and download processed records.
+	\item User guide: Non-technical instructions for museum curators, library staff, and heritage researchers to upload images and download processed records.
 	
-	\item \textbf{Impact statement}: Quantified benefits for institutional stakeholders (Archaeological Survey of India, Digital Library of India, eGangotri portal):
+	\item Impact statement: Quantified benefits for institutional stakeholders (Archaeological Survey of India, Digital Library of India, eGangotri portal):
 	\begin{itemize}
 		\item Researcher accessibility: 100,000+ inscriptions made searchable.
 		\item Time savings: 150,000 expert-hours if manual transcription were required.
 		\item Public engagement: Open-access portal reaching millions of students and historians.
 	\end{itemize}
 	
-	\item \textbf{Data governance policy}: Ownership, access control, CC BY 4.0 licensing, and compliance with heritage institution policies.
+	\item Data governance policy: Ownership, access control, CC BY 4.0 licensing, and compliance with heritage institution policies.
 \end{itemize}
 
 \section{Technical Infrastructure and Computing Environment}
@@ -145,9 +145,9 @@ Economic justification and scaling models:
 
 The development environment assumes:
 \begin{itemize}
-	\item \textbf{GPU:} NVIDIA GPU with CUDA 12.1 support (tested on RTX 4090, RTX A100). Real-ESRGAN inference: 2–4 seconds per image.
-	\item \textbf{RAM:} 32 GB minimum (48 GB recommended). Batch processing of 10 images in memory.
-	\item \textbf{Storage:} 500 GB SSD for code, models, and sample data. Cloud storage (AWS S3) for production archive.
+	\item GPU: NVIDIA GPU with CUDA 12.1 support (tested on RTX 4090, RTX A100). Real-ESRGAN inference: 2–4 seconds per image.
+	\item RAM: 32 GB minimum (48 GB recommended). Batch processing of 10 images in memory.
+	\item Storage: 500 GB SSD for code, models, and sample data. Cloud storage (AWS S3) for production archive.
 \end{itemize}
 
 \subsection{Software Dependencies and Versions}
@@ -212,48 +212,48 @@ Continuous integration via GitHub Actions validates all stages:
 The project follows an iterative agile methodology with two-week sprints:
 
 \begin{enumerate}
-	\item \textbf{Sprint planning:} Team identifies bottlenecks from previous sprint (e.g., OCR accuracy), selects tasks (preprocessing improvements, new test cases).
+	\item Sprint planning: Team identifies bottlenecks from previous sprint (e.g., OCR accuracy), selects tasks (preprocessing improvements, new test cases).
 	
-	\item \textbf{Daily standup:} Asynchronous updates via Slack on blockers, progress, and interdisciplinary handoffs (e.g., ECE filter design inputs to CS code integration).
+	\item Daily standup: Asynchronous updates via Slack on blockers, progress, and interdisciplinary handoffs (e.g., ECE filter design inputs to CS code integration).
 	
-	\item \textbf{Code review:} All changes to \texttt{src/}, \texttt{api/}, \texttt{web/} require peer review before merging to develop. ECE contributions (filters, metrics) are reviewed for correctness; IEM documentation is reviewed for completeness.
+	\item Code review: All changes to \texttt{src/}, \texttt{api/}, \texttt{web/} require peer review before merging to develop. ECE contributions (filters, metrics) are reviewed for correctness; IEM documentation is reviewed for completeness.
 	
-	\item \textbf{Integration testing:} Full pipeline tested on sample dataset (5 images per artefact type) to verify inter-stage consistency (e.g., binarised output is valid input to OCR).
+	\item Integration testing: Full pipeline tested on sample dataset (5 images per artefact type) to verify inter-stage consistency (e.g., binarised output is valid input to OCR).
 	
-	\item \textbf{Sprint review:} Demo of new features to stakeholders (simulated museum curators, heritage researchers) for feedback.
+	\item Sprint review: Demo of new features to stakeholders (simulated museum curators, heritage researchers) for feedback.
 	
-	\item \textbf{Sprint retrospective:} Team reflects on process improvements, scheduling accuracy, and technical debt.
+	\item Sprint retrospective: Team reflects on process improvements, scheduling accuracy, and technical debt.
 \end{enumerate}
 
 \subsection{Testing Strategy}
 
 \begin{itemize}
-	\item \textbf{Unit tests:} Per-function validation (e.g., \texttt{test\_preprocess.py} verifies CLAHE produces expected histogram shape).
-	\item \textbf{Integration tests:} Multi-stage validation (e.g., preprocessing output is correctly ingested by enhancement).
-	\item \textbf{Regression tests:} Known-good outputs are stored; new builds are verified against regression suite.
-	\item \textbf{Visual inspection:} Team reviews enhanced and binarised outputs qualitatively; misaligned results trigger root-cause analysis.
+	\item Unit tests: Per-function validation (e.g., \texttt{test\_preprocess.py} verifies CLAHE produces expected histogram shape).
+	\item Integration tests: Multi-stage validation (e.g., preprocessing output is correctly ingested by enhancement).
+	\item Regression tests: Known-good outputs are stored; new builds are verified against regression suite.
+	\item Visual inspection: Team reviews enhanced and binarised outputs qualitatively; misaligned results trigger root-cause analysis.
 \end{itemize}
 
 \subsection{Interdisciplinary Collaboration Points}
 
 \begin{itemize}
-	\item \textbf{CS → ECE:} CS delivers enhanced image outputs; ECE computes quality metrics (PSNR, SSIM, CNR) on a test set, identifies underperforming artefact types.
+	\item CS → ECE: CS delivers enhanced image outputs; ECE computes quality metrics (PSNR, SSIM, CNR) on a test set, identifies underperforming artefact types.
 	
-	\item \textbf{ECE → CS:} ECE delivers custom filters (Gabor, FFT); CS integrates them as optional pipeline stages selectable per artefact type.
+	\item ECE → CS: ECE delivers custom filters (Gabor, FFT); CS integrates them as optional pipeline stages selectable per artefact type.
 	
-	\item \textbf{CS, ECE → IEM:} Technical teams provide weekly throughput metrics, error rates, and confidence scores; IEM updates project plan and risk register.
+	\item CS, ECE → IEM: Technical teams provide weekly throughput metrics, error rates, and confidence scores; IEM updates project plan and risk register.
 	
-	\item \textbf{IEM → CS, ECE:} IEM identifies bottlenecks (OCR is slowest stage); technical teams propose solutions (batch processing, model quantisation).
+	\item IEM → CS, ECE: IEM identifies bottlenecks (OCR is slowest stage); technical teams propose solutions (batch processing, model quantisation).
 \end{itemize}
 
 \section{Data Flow and Processing Architecture}
 
-Figure \ref{fig:pipeline_overview} illustrates the complete data flow. Raw images from institutional archives (ASI, DLI, eGangotri) are ingested via the web UI or API, routed through the preprocessing→enhancement→binarisation→OCR stages, and assembled into structured JSON records with full metadata, citations, and archival information. Quality metrics are computed in parallel at each stage, and outputs are stored in separate directories to preserve the non-destructive processing principle: original images are never overwritten.
+Figure \ref{fig:tikz_pipeline_overview} illustrates the complete data flow. Raw images from institutional archives (ASI, DLI, eGangotri) are ingested via the web UI or API, routed through the preprocessing→enhancement→binarisation→OCR stages, and assembled into structured JSON records with full metadata, citations, and archival information. Quality metrics are computed in parallel at each stage, and outputs are stored in separate directories to preserve the non-destructive processing principle: original images are never overwritten.
 
 \begin{center}
 \begin{tabular}{|c|c|c|}
 	\hline
-	\textbf{Input} & \textbf{Processing} & \textbf{Output} \\
+	Input & Processing & Output \\
 	\hline
 	Raw TIFF/JPG & Preprocessing & Normalised JPG (quality=95) \\
 	(degraded) & CLAHE, white balance, border crop & \\

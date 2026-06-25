@@ -4,7 +4,7 @@ This chapter details the system architecture and mathematical foundations of the
 
 \section{Pipeline System Architecture and Overview}
 
-The digitisation pipeline is structured as a non-destructive sequential signal processing system designed to transform highly degraded scans of historical South Asian artefacts into clean, high-contrast digital assets. The system layout divides execution into discrete, isolated stages to prevent write operations from affecting raw inputs:
+The digitisation pipeline is structured as a non-destructive sequential signal processing system designed to transform highly degraded scans of historical South Asian artefacts into clean, high-contrast digital assets. The system layout divides execution into discrete, isolated stages to prevent write operations from affecting raw inputs, as illustrated in Figure \ref{fig:tikz_pipeline_overview}:
 
 \begin{figure}[H]
 \centering
@@ -16,20 +16,20 @@ The digitisation pipeline is structured as a non-destructive sequential signal p
 ]
     % Nodes
     \node (raw) [io] {Raw Image Scan};
-    \node (s1) [block, below of=raw, yshift=0.3cm] {\textbf{Stage 1: Preprocessing}\\(Orientation, CLAHE, AWB, Crop)};
-    \node (s2) [block, below of=s1, yshift=0.3cm] {\textbf{Stage 2: Signal Enhancement}\\(NLM Denoising, Real-ESRGAN/DStretch)};
-    \node (s3) [block, below of=s2, yshift=0.3cm] {\textbf{Stage 3: Binarisation}\\(Sauvola, Material Rules, UNet/DocEnTr)};
-    \node (s4) [block, below of=s3, yshift=0.3cm] {\textbf{Stage 4: OCR Routing (Provision)}\\(Aspect Ratio, Parallel Ensemble)};
-    \node (s6) [block, below of=s4, yshift=0.3cm] {\textbf{Stage 6: Record Assembly}\\(JSON Metadata, fpdf2 PDF Exporter)};
-    \node (out) [io, below of=s6, yshift=0.3cm] {Structured Record};
+    \node (s1) [block, below of=raw, yshift=0.3cm] {Stage 1: Preprocessing\\(Orientation, CLAHE, AWB, Crop)};
+    \node (s2) [block, below of=s1, yshift=0.3cm] {Stage 2: Signal Enhancement\\(NLM Denoising, Real-ESRGAN/DStretch)};
+    \node (s3) [block, below of=s2, yshift=0.3cm] {Stage 3: Binarisation\\(Sauvola, Material Rules, UNet/DocEnTr)};
+    \node (s4) [block, below of=s3, yshift=0.3cm] {Stage 4: OCR Routing (Provision)\\(Aspect Ratio, Parallel Ensemble)};
+    \node (s5) [block, below of=s4, yshift=0.3cm] {Stage 5: Record Assembly\\(JSON Metadata, fpdf2 PDF Exporter)};
+    \node (out) [io, below of=s5, yshift=0.3cm] {Structured Record};
 
     % Arrows
     \draw [arrow] (raw) -- (s1);
     \draw [arrow] (s1) -- (s2);
     \draw [arrow] (s2) -- (s3);
     \draw [arrow] (s3) -- (s4);
-    \draw [arrow] (s4) -- (s6);
-    \draw [arrow] (s6) -- (out);
+    \draw [arrow] (s4) -- (s5);
+    \draw [arrow] (s5) -- (out);
 \end{tikzpicture}
 \caption{Stage-wise sequential architecture and dataflow of the digitisation pipeline.}
 \label{fig:tikz_pipeline_overview}
@@ -96,8 +96,8 @@ Here, $h = 10$ regulates the filtering strength. If the spatial patch around pix
 \subsection{Real-ESRGAN Super-Resolution}
 Real-ESRGAN is a deep generative adversarial network designed to restore degraded images. Its generator, based on the RRDB (Residual-in-Residual Dense Block) architecture, uses residual skip connections to pass low-frequency information directly through the network, allowing the model to focus on reconstructing high-frequency stroke details:
 \begin{itemize}
-	\item \textbf{Outscale = 2:} The model performs a $4\times$ spatial interpolation internally. To prevent the generator from hallucinating synthetic stroke details or generating artifacts on weathered stone, the output is downscaled to $2\times$ zoom, which preserves the original character structures.
-	\item \textbf{Tiling:} Large archival scans can exceed GPU memory capacities. Splitting the input into $400 \times 400$ pixel tiles with $10\text{ px}$ overlap padding eliminates memory exhaustions. The overlap padding ensures seamless blending at tile boundaries during recombination.
+	\item Outscale = 2: The model performs a $4\times$ spatial interpolation internally. To prevent the generator from hallucinating synthetic stroke details or generating artifacts on weathered stone, the output is downscaled to $2\times$ zoom, which preserves the original character structures.
+	\item Tiling: Large archival scans can exceed GPU memory capacities. Splitting the input into $400 \times 400$ pixel tiles with $10\text{ px}$ overlap padding eliminates memory exhaustions. The overlap padding ensures seamless blending at tile boundaries during recombination.
 \end{itemize}
 
 \subsection{DStretch (Decorrelation Stretch)}
@@ -156,21 +156,21 @@ k_{\text{base}} = \begin{cases}
 
 \subsection{Specialized Binarisation Pipelines}
 \begin{itemize}
-	\item \textbf{Stone Inscriptions:} Applies bilateral filtering ($d=9, \sigma=50$) to smooth textures while preserving edges, followed by Sauvola thresholding with dynamic window and $k=0.25$, morphological closing, and an edge-based flood fill to clear margins.
-	\item \textbf{Palm Leaf character binarisation:} Generates a rough mask on the R-channel, dilates to identify connected component bounding boxes, crops character regions, and applies local Sauvola using a dynamic window:
+	\item Stone Inscriptions: Applies bilateral filtering ($d=9, \sigma=50$) to smooth textures while preserving edges, followed by Sauvola thresholding with dynamic window and $k=0.25$, morphological closing, and an edge-based flood fill to clear margins.
+	\item Palm Leaf character binarisation: Generates a rough mask on the R-channel, dilates to identify connected component bounding boxes, crops character regions, and applies local Sauvola using a dynamic window:
 \begin{equation}
 W_{\text{crop}} = \max\left(7, \min\left(31, \text{crop\_side} // 3\right)\right)
 \end{equation}
 	This character-level local thresholding prevents organic background fibers from connecting adjacent characters.
-	\item \textbf{Copper Plate Inscriptions:} Insets the plate bounding box by 6 pixels to remove border patinas, runs bilateral filtering, applies Sauvola ($W=31, k=0.12$), and filters out components touching the bounding box edge.
-	\item \textbf{Direct Rubbings:} Applies median blur ($K_{\text{size}}=13$) to remove paper grain noise, followed by Otsu global thresholding.
+	\item Copper Plate Inscriptions: Insets the plate bounding box by 6 pixels to remove border patinas, runs bilateral filtering, applies Sauvola ($W=31, k=0.12$), and filters out components touching the bounding box edge.
+	\item Direct Rubbings: Applies median blur ($K_{\text{size}}=13$) to remove paper grain noise, followed by Otsu global thresholding.
 \end{itemize}
 
 \subsection{Deep Learning Architectures}
 \begin{itemize}
-	\item \textbf{LightUNet:} A convolutional network with 3 downsampling layers ($32 \rightarrow 64 \rightarrow 128 \rightarrow 256$ channels), skip connections to preserve spatial details, and a Sigmoid classifier.
-	\item \textbf{DocEnTr:} A patch-based Visual Transformer (ViT) encoder ($8 \times 8$ patch size, embedding dimension 256, 4 transformer layers, 8 attention heads) designed to capture spatial dependencies across the page, paired with a linear projection layer and a 3-layer CNN decoder.
-	\item \textbf{Fallback routing:} Deep learning models can sometimes generate artifacts or misclassify degraded text regions. To prevent this, binarisation certainty is checked using binary entropy. If the entropy certainty is $< 0.65$ or model weights are missing, the system falls back to the Sauvola pipeline.
+	\item LightUNet: A convolutional network with 3 downsampling layers ($32 \rightarrow 64 \rightarrow 128 \rightarrow 256$ channels), skip connections to preserve spatial details, and a Sigmoid classifier.
+	\item DocEnTr: A patch-based Visual Transformer (ViT) encoder ($8 \times 8$ patch size, embedding dimension 256, 4 transformer layers, 8 attention heads) designed to capture spatial dependencies across the page, paired with a linear projection layer and a 3-layer CNN decoder.
+	\item Fallback routing: Deep learning models can sometimes generate artifacts or misclassify degraded text regions. To prevent this, binarisation certainty is checked using binary entropy. If the entropy certainty is $< 0.65$ or model weights are missing, the system falls back to the Sauvola pipeline.
 \end{itemize}
 
 \section{Custom ECE Signal Processing Filters}
@@ -184,9 +184,9 @@ g(x,y;\lambda,\theta,\psi,\sigma,\gamma) = \exp\left(-\frac{x'^2 + \gamma^2 y'^2
 \end{equation}
 where $x' = x\cos\theta + y\sin\theta$ and $y' = -x\sin\theta + y\cos\theta$.
 \begin{itemize}
-	\item \textbf{Wavelength ($\lambda$):} Scaled inverse of filter frequency $[0.1, 0.2, 0.4]$, tuned to stroke width.
-	\item \textbf{Orientation ($\theta$):} 8 directions spaced evenly over $[0, \pi]$ to capture all stroke orientations.
-	\item \textbf{Aspect ratio ($\gamma$):} Set to $0.5$ for stroke anisotropy.
+	\item Wavelength ($\lambda$): Scaled inverse of filter frequency $[0.1, 0.2, 0.4]$, tuned to stroke width.
+	\item Orientation ($\theta$): 8 directions spaced evenly over $[0, \pi]$ to capture all stroke orientations.
+	\item Aspect ratio ($\gamma$): Set to $0.5$ for stroke anisotropy.
 \end{itemize}
 
 \subsection{Directional Edge Enhancement (Sobel Gradient Projections)}
@@ -276,8 +276,8 @@ Evaluates the proportion of foreground text pixels in the binarised image:
 \text{Coverage} = \frac{\sum M(x, y) = 255}{H \times W} \times 100\%
 \end{equation}
 \begin{itemize}
-	\item \textbf{Lower limit ($0.5\%$):} Delineates empty crops where no text was extracted.
-	\item \textbf{Upper limit ($45\%$):} Identifies frames filled with noise or solid black borders.
+	\item Lower limit ($0.5\%$): Delineates empty crops where no text was extracted.
+	\item Upper limit ($45\%$): Identifies frames filled with noise or solid black borders.
 \end{itemize}
 
 \section{Summary}

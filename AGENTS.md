@@ -16,7 +16,7 @@ graph TD
     B --> C[Stage 2: Enhancement]
     C --> D[Stage 3: Binarisation]
     D --> E[Stage 4: OCR & Routing]
-    E --> F[Stage 6: Record Assembly]
+    E --> F[Stage 5: Record Assembly]
 
     subgraph "Stage 1: Preprocessing"
         B1[EXIF Transpose] --> B2[L-Channel CLAHE]
@@ -204,7 +204,7 @@ inscription-digitisation/
 │   ├── enhanced/            # Stage 2 Outputs (JPEG, Quality 95)
 │   ├── binarised/           # Stage 3 Outputs (PNG, Lossless)
 │   ├── thumbnails/          # Cache for React UI (JPEG, Max 400px width)
-│   └── records/             # Stage 6 Output JSON Records
+│   └── records/             # Stage 5 Output JSON Records
 ├── src/
 │   ├── preprocess.py        # Stage 1 execution code
 │   ├── enhance.py           # Stage 2 execution code
@@ -325,7 +325,7 @@ Although translation and final transcriptions are deferred, Stage 4 provides the
 
 ---
 
-### 3.6 Stage 6: Record Assembly & PDF Generator (src/record.py)
+### 3.6 Stage 5: Record Assembly & PDF Generator (src/record.py)
 
 #### A. Record Assembly
 * `assemble_record(...)`

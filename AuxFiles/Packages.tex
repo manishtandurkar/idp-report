@@ -9,7 +9,8 @@
 %%%Page related
 \usepackage{fancyhdr} % for header & footer
 \usepackage[hidelinks]{hyperref}
-\usepackage[nonumberlist]{glossaries} %For Glossaries - to be loaded only after hyperref package
+\usepackage[nonumberlist,nogroupskip]{glossaries} %For Glossaries - to be loaded only after hyperref package
+\renewcommand{\glsnamefont}[1]{#1}
 %\usepackage[automake]{glossaries-extra}
 % For code snippets
 \usepackage[listings]{tcolorbox}

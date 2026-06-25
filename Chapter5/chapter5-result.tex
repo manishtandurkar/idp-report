@@ -98,7 +98,7 @@ where $\mu_{\text{foreground}}$ and $\mu_{\text{background}}$ represent the mean
 \text{Coverage} = \frac{\sum M(x, y) == 255}{H \times W} \times 100\%
 \end{equation}
 
-Table 5.1 presents the self-reference quality metrics compiled across the six primary artefact types, verifying compliance with the ECE targets.
+Table \ref{tab:ece_quality_metrics} presents the self-reference quality metrics compiled across the six primary artefact types, verifying compliance with the ECE targets.
 
 \begin{table}[htbp]
 \centering
@@ -107,7 +107,7 @@ Table 5.1 presents the self-reference quality metrics compiled across the six pr
 \label{tab:ece_quality_metrics}
 \begin{tabular}{|l|c|c|c|c|}
 	\hline
-	\textbf{Artefact Material} & \textbf{PSNR (dB)} & \textbf{SSIM} & \textbf{CNR} & \textbf{Ink Coverage} \\
+	Artefact Material & PSNR (dB) & SSIM & CNR & Ink Coverage \\
 	\hline
 	Stone Inscriptions & 30.8 & 0.89 & 1.9 & 12.5\% \\ \hline
 	Palm Leaf Manuscripts & 31.4 & 0.91 & 2.4 & 8.2\% \\ \hline
@@ -137,7 +137,7 @@ To measure the effectiveness of illumination normalisation, colour channel stati
 \text{Kurtosis } K = \left[ \frac{1}{N \cdot \sigma^4} \sum_{i=1}^N (x_i - \mu)^4 \right] - 3
 \end{equation}
 
-Table 5.2 outlines these statistical parameters before and after applying the CLAHE and auto-white balance stages.
+Table \ref{tab:channel_stats} outlines these statistical parameters before and after applying the CLAHE and auto-white balance stages.
 
 \begin{table}[htbp]
 \centering
@@ -148,9 +148,9 @@ Table 5.2 outlines these statistical parameters before and after applying the CL
 \makebox[\textwidth][c]{%
 \begin{tabular}{|l|c|c|c|c|c|c|c|c|}
 	\hline
-	& \multicolumn{4}{c|}{\textbf{Raw Image Scan}} & \multicolumn{4}{c|}{\textbf{Preprocessed Output}} \\
+	& \multicolumn{4}{c|}{Raw Image Scan} & \multicolumn{4}{c|}{Preprocessed Output} \\
 	\cline{2-9}
-	\textbf{Artefact Sample} & \textbf{Mean} & \textbf{Std Dev} & \textbf{Skewness} & \textbf{Kurtosis} & \textbf{Mean} & \textbf{Std Dev} & \textbf{Skewness} & \textbf{Kurtosis} \\
+	Artefact Sample & Mean & Std Dev & Skewness & Kurtosis & Mean & Std Dev & Skewness & Kurtosis \\
 	\hline
 	Stone Inscription (R) & 82.4 & 34.5 & 1.24 & 0.45 & 124.5 & 42.1 & 0.12 & -0.12 \\ \hline
 	Stone Inscription (G) & 78.1 & 31.2 & 1.35 & 0.52 & 124.8 & 41.8 & 0.08 & -0.15 \\ \hline
@@ -166,11 +166,11 @@ Table 5.2 outlines these statistical parameters before and after applying the CL
 }
 \end{table}
 
-The statistics in Table 5.2 reveal that raw scans possess significant asymmetry. Stone inscriptions exhibit high positive skewness ($S > 1.2$), indicating dark regions with minor highlights. Paper manuscripts display negative skewness ($S < -0.8$) due to highly reflective backgrounds. Post-preprocessing, all channel skewness values converge close to zero ($|S| < 0.25$), proving that LAB-space CLAHE and white-balancing effectively correct exposure imbalances.
+The statistics in Table \ref{tab:channel_stats} reveal that raw scans possess significant asymmetry. Stone inscriptions exhibit high positive skewness ($S > 1.2$), indicating dark regions with minor highlights. Paper manuscripts display negative skewness ($S < -0.8$) due to highly reflective backgrounds. Post-preprocessing, all channel skewness values converge close to zero ($|S| < 0.25$), proving that LAB-space CLAHE and white-balancing effectively correct exposure imbalances.
 
 \section{Performance Comparison}
 
-Performance was benchmarked on a standard quad-core Intel i7 CPU ($3.4\text{ GHz}$) and an NVIDIA RTX 4060 GPU ($8\text{ GB}$ VRAM) using a $3000 \times 4000\text{ px}$ input image size. Table 5.3 highlights the latency comparison across individual pipeline stages.
+Performance was benchmarked on a standard quad-core Intel i7 CPU ($3.4\text{ GHz}$) and an NVIDIA RTX 4060 GPU ($8\text{ GB}$ VRAM) using a $3000 \times 4000\text{ px}$ input image size. Table \ref{tab:processing_latency} highlights the latency comparison across individual pipeline stages.
 
 \begin{table}[htbp]
 \centering
@@ -179,7 +179,7 @@ Performance was benchmarked on a standard quad-core Intel i7 CPU ($3.4\text{ GHz
 \label{tab:processing_latency}
 \begin{tabular}{|l|c|c|}
 	\hline
-	\textbf{Pipeline Stage} & \textbf{CPU Latency (s)} & \textbf{GPU Latency (s)} \\
+	Pipeline Stage & CPU Latency (s) & GPU Latency (s) \\
 	\hline
 	Stage 1: Preprocessing & 1.5 & 0.2 \\ \hline
 	Stage 2: Enhancement (Mild Mode) & 1.3 & 0.3 \\ \hline
@@ -188,14 +188,14 @@ Performance was benchmarked on a standard quad-core Intel i7 CPU ($3.4\text{ GHz
 	Stage 3: Binarisation (Sauvola Stone) & 0.5 & 0.1 \\ \hline
 	Stage 3: Binarisation (Palm-Leaf Local) & 2.1 & 0.4 \\ \hline
 	Stage 3: Binarisation (LightUNet DL) & 4.2 & 0.3 \\ \hline
-	Stage 6: Record Assembly \& Exporter & 1.1 & 1.1 \\
+	Stage 5: Record Assembly \& Exporter & 1.1 & 1.1 \\
 	\hline
 \end{tabular}
 \end{table}
 
-Table 5.3 shows that running Real-ESRGAN on a CPU represents the primary system bottleneck, requiring up to $18.2\text{ s}$. Under GPU acceleration, this latency drops to $1.1\text{ s}$, reducing the total pipeline time from $\approx 25\text{ seconds}$ to $\approx 3.5\text{ seconds}$. 
+Table \ref{tab:processing_latency} shows that running Real-ESRGAN on a CPU represents the primary system bottleneck, requiring up to $18.2\text{ s}$. Under GPU acceleration, this latency drops to $1.1\text{ s}$, reducing the total pipeline time from $\approx 25\text{ seconds}$ to $\approx 3.5\text{ seconds}$. 
 
-Table 5.4 documents the image storage footprint per processing stage. The lossless 1-bit binarised PNG file results in a $91.9\%$ file size reduction compared to the raw scanned format, facilitating fast web rendering.
+Table \ref{tab:storage_footprint} documents the image storage footprint per processing stage. The lossless 1-bit binarised PNG file results in a $91.9\%$ file size reduction compared to the raw scanned format, facilitating fast web rendering.
 
 \begin{table}[htbp]
 \centering
@@ -204,7 +204,7 @@ Table 5.4 documents the image storage footprint per processing stage. The lossle
 \label{tab:storage_footprint}
 \begin{tabular}{|l|c|c|}
 	\hline
-	\textbf{Processing Stage} & \textbf{Average File Size} & \textbf{Size Change (\%)} \\
+	Processing Stage & Average File Size & Size Change (\%) \\
 	\hline
 	Raw Scan (Uncompressed TIF/JPEG) & 4.2 MB & Base (0.0\%) \\ \hline
 	Stage 1: Preprocessed JPEG (Quality 95) & 2.8 MB & -33.3\% \\ \hline
@@ -214,7 +214,7 @@ Table 5.4 documents the image storage footprint per processing stage. The lossle
 \end{tabular}
 \end{table}
 
-To select the deployment architecture, Table 5.5 presents a cost-benefit comparison between local workstation execution and an AWS Cloud deployment.
+To select the deployment architecture, Table \ref{tab:cost_benefit} presents a cost-benefit comparison between local workstation execution and an AWS Cloud deployment.
 
 \begin{table}[htbp]
 \centering
@@ -223,7 +223,7 @@ To select the deployment architecture, Table 5.5 presents a cost-benefit compari
 \label{tab:cost_benefit}
 \begin{tabular}{|l|p{5cm}|p{5cm}|}
 	\hline
-	\textbf{Factor} & \textbf{Local Workstation (RTX 4060)} & \textbf{AWS Cloud Deployment (g4dn.xlarge)} \\
+	Factor & Local Workstation (RTX 4060) & AWS Cloud Deployment (g4dn.xlarge) \\
 	\hline
 	Initial Capital Expense (CapEx) & \$1,200 (workstation purchase) & \$0.00 \\ \hline
 	Ongoing Operational Cost (OpEx) & \$0.00 (electricity only) & \$0.526 per hour compute + \$0.023/GB-month S3 storage \\ \hline
@@ -238,7 +238,7 @@ The cost comparison shows that for local archiving sites, setting up local works
 
 \section{Inferences Drawn from the Results Obtained}
 
-The suitability matrix in Table 5.6 details the processing paths determined for the distinct South Asian historical materials.
+The suitability matrix in Table \ref{tab:suitability_matrix} details the processing paths determined for the distinct South Asian historical materials.
 
 \begin{table}[htbp]
 \centering
@@ -247,25 +247,25 @@ The suitability matrix in Table 5.6 details the processing paths determined for 
 \label{tab:suitability_matrix}
 \begin{tabular}{|p{2.5cm}|p{3.5cm}|p{3cm}|p{3.5cm}|}
 	\hline
-	\textbf{Artefact Type} & \textbf{Primary Degradation} & \textbf{Enhancement Mode} & \textbf{Binarisation Method} \\
+	Artefact Type & Primary Degradation & Enhancement Mode & Binarisation Method \\
 	\hline
-	\textbf{Stone Inscriptions} & Weathered surface, low contrast, shadows & Mild (Denoise + Sharpen) & Sauvola Stone (Bilateral + Black-Hat) \\ \hline
-	\textbf{Palm Leaf} & Faded ink, organic fibre texture & DStretch (colour contrast) & Sauvola Palm-Leaf (character local crops) \\ \hline
-	\textbf{Copper Plates} & Patina oxidation, metal reflections & Mild (Denoise + Sharpen) & Sauvola Copper-Plate (rect mask + glyph stamp) \\ \hline
-	\textbf{Paper Manuscripts} & Ink bleeding, foxing, paper staining & Mild (Denoise + Sharpen) & Otsu Global (with median pre-blur) \\ \hline
-	\textbf{Cave Paintings} & Faint pigments, non-uniform rock face & DStretch & Adaptive Local Mean \\ \hline
-	\textbf{Direct Rubbings} & Paper creasing, chalk dust noise & Mild (Denoise only) & Sauvola Rubbing (median blur + Otsu) \\
+	Stone Inscriptions & Weathered surface, low contrast, shadows & Mild (Denoise + Sharpen) & Sauvola Stone (Bilateral + Black-Hat) \\ \hline
+	Palm Leaf & Faded ink, organic fibre texture & DStretch (colour contrast) & Sauvola Palm-Leaf (character local crops) \\ \hline
+	Copper Plates & Patina oxidation, metal reflections & Mild (Denoise + Sharpen) & Sauvola Copper-Plate (rect mask + glyph stamp) \\ \hline
+	Paper Manuscripts & Ink bleeding, foxing, paper staining & Mild (Denoise + Sharpen) & Otsu Global (with median pre-blur) \\ \hline
+	Cave Paintings & Faint pigments, non-uniform rock face & DStretch & Adaptive Local Mean \\ \hline
+	Direct Rubbings & Paper creasing, chalk dust noise & Mild (Denoise only) & Sauvola Rubbing (median blur + Otsu) \\
 	\hline
 \end{tabular}
 \end{table}
 
 Several key operational inferences are drawn from the experimental data:
 \begin{itemize}
-	\item \textbf{Adaptive Local Sauvola Thresholding:} While Otsu global binarisation performs well on paper manuscripts under uniform illumination ($SSIM \ge 0.95$), it fails on weathered stone and copper plates due to local staining, producing large solid black components. The local Sauvola thresholding handles lighting variances effectively.
+	\item Adaptive Local Sauvola Thresholding: While Otsu global binarisation performs well on paper manuscripts under uniform illumination ($SSIM \ge 0.95$), it fails on weathered stone and copper plates due to local staining, producing large solid black components. The local Sauvola thresholding handles lighting variances effectively.
 	
-	\item \textbf{Character-Level Local Segmentations:} On palm-leaf manuscripts, organic decay along the leaf margins creates false components that intersect text lines. Running character-level cropping and local thresholding ensures margining noise is excluded, preserving faded glyph strokes.
+	\item Character-Level Local Segmentations: On palm-leaf manuscripts, organic decay along the leaf margins creates false components that intersect text lines. Running character-level cropping and local thresholding ensures margining noise is excluded, preserving faded glyph strokes.
 	
-	\item \textbf{Deep Learning Fallbacks:} The LightUNet and DocEnTr neural binarisation networks provide clean strokes on standard scripts. However, when processing highly deteriorated patinas or unfamiliar characters, the output entropy increases. Setting an entropy fallback threshold of $< 0.65$ triggers the robust, mathematical Sauvola routing, ensuring stable pipeline output.
+	\item Deep Learning Fallbacks: The LightUNet and DocEnTr neural binarisation networks provide clean strokes on standard scripts. However, when processing highly deteriorated patinas or unfamiliar characters, the output entropy increases. Setting an entropy fallback threshold of $< 0.65$ triggers the robust, mathematical Sauvola routing, ensuring stable pipeline output.
 \end{itemize}
 
 \section*{Summary}
